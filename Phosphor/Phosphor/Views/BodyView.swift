@@ -3,6 +3,9 @@ import SwiftUI
 struct BodyView: View {
     @ObservedObject var dataManager = DataManager.shared
 
+    @State private var showStats = false
+    @State private var showSettings = false
+
     private let columns = [
         GridItem(.flexible(), spacing: 12),
         GridItem(.flexible(), spacing: 12),
@@ -10,7 +13,7 @@ struct BodyView: View {
     ]
 
     var body: some View {
-        NavigationStack {
+        ZStack {
             ScrollView {
                 VStack(spacing: 20) {
                     headerView
@@ -18,24 +21,53 @@ struct BodyView: View {
                     muscleGroupGrid
                 }
                 .padding()
+                .padding(.top, 50)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Phosphor")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        Task {
-                            await dataManager.syncFromCloud()
-                        }
-                    }) {
-                        Image(systemName: "arrow.triangle.2.circlepath")
-                    }
-                    .disabled(dataManager.isLoading)
-                }
-            }
             .refreshable {
                 await dataManager.syncFromCloud()
             }
+
+            // Top navigation buttons
+            VStack {
+                HStack {
+                    // Stats button (top left)
+                    Button(action: { showStats = true }) {
+                        Image(systemName: "chart.bar.fill")
+                            .font(.system(size: 18))
+                            .frame(width: 44, height: 44)
+                            .background(
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .foregroundStyle(dataManager.settings.highlightColor.color)
+                    }
+
+                    Spacer()
+
+                    // Settings button (top right)
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .font(.system(size: 18))
+                            .frame(width: 44, height: 44)
+                            .background(
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                            )
+                            .foregroundStyle(dataManager.settings.highlightColor.color)
+                    }
+                }
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+
+                Spacer()
+            }
+        }
+        .fullScreenCover(isPresented: $showStats) {
+            StatsView()
+        }
+        .fullScreenCover(isPresented: $showSettings) {
+            SettingsView()
         }
     }
 

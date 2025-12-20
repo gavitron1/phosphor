@@ -114,6 +114,15 @@ class DataManager: ObservableObject {
         }
     }
 
+    func updateGender(_ gender: Gender) {
+        settings.gender = gender
+        saveLocalData()
+
+        Task {
+            await syncSettingsToCloud()
+        }
+    }
+
     // MARK: - iCloud Sync
 
     func syncFromCloud() async {

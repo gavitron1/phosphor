@@ -22,13 +22,20 @@ struct MuscleGroupData: Codable, Identifiable {
     }
 }
 
+enum Gender: String, Codable, CaseIterable {
+    case male = "Male"
+    case female = "Female"
+}
+
 struct UserSettings: Codable {
     var highlightColor: CodableColor
     var cooldownDays: Double
+    var gender: Gender
 
-    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0) {
+    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male) {
         self.highlightColor = highlightColor
         self.cooldownDays = cooldownDays
+        self.gender = gender
     }
 }
 
