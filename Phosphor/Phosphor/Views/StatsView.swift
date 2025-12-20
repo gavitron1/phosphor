@@ -2,9 +2,10 @@ import SwiftUI
 
 struct StatsView: View {
     @ObservedObject var dataManager = DataManager.shared
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .topLeading) {
             ScrollView {
                 VStack(spacing: 16) {
                     summaryCard
@@ -12,9 +13,23 @@ struct StatsView: View {
                     statsListView
                 }
                 .padding()
+                .padding(.top, 50)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Stats")
+
+            // Back button
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left.circle.fill")
+                        .font(.system(size: 36))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(dataManager.settings.highlightColor.color)
+                }
+                .padding(.leading, 16)
+                .padding(.top, 8)
+
+                Spacer()
+            }
         }
     }
 

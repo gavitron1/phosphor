@@ -3,39 +3,100 @@ import SwiftUI
 struct SettingsView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var cloudKitManager = CloudKitManager.shared
+    @Environment(\.dismiss) private var dismiss
 
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var deleteError: String?
 
     var body: some View {
-        NavigationStack {
+        ZStack(alignment: .topLeading) {
             Form {
+                genderSection
+
                 highlightColorSection
 
                 cooldownSection
+
+                syncSection
 
                 iCloudSection
 
                 dangerZoneSection
             }
-            .navigationTitle("Settings")
-            .alert("Delete All Data", isPresented: $showDeleteConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
-                    deleteAllData()
+            .padding(.top, 50)
+
+            // Back button
+            HStack {
+                Button(action: { dismiss() }) {
+                    Image(systemName: "chevron.left.circle.fill")
+                        .font(.system(size: 36))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(dataManager.settings.highlightColor.color)
                 }
-            } message: {
-                Text("This will permanently delete all your workout data from this device and iCloud. This action cannot be undone.")
+                .padding(.leading, 16)
+                .padding(.top, 8)
+
+                Spacer()
             }
-            .alert("Error", isPresented: .init(
-                get: { deleteError != nil },
-                set: { if !$0 { deleteError = nil } }
+        }
+        .alert("Delete All Data", isPresented: $showDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteAllData()
+            }
+        } message: {
+            Text("This will permanently delete all your workout data from this device and iCloud. This action cannot be undone.")
+        }
+        .alert("Error", isPresented: .init(
+            get: { deleteError != nil },
+            set: { if !$0 { deleteError = nil } }
+        )) {
+            Button("OK") { deleteError = nil }
+        } message: {
+            Text(deleteError ?? "An error occurred")
+        }
+    }
+
+    // MARK: - Gender Section
+
+    private var genderSection: some View {
+        Section {
+            Picker("Body Type", selection: Binding(
+                get: { dataManager.settings.gender },
+                set: { dataManager.updateGender($0) }
             )) {
-                Button("OK") { deleteError = nil }
-            } message: {
-                Text(deleteError ?? "An error occurred")
+                ForEach(Gender.allCases, id: \.self) { gender in
+                    Text(gender.rawValue).tag(gender)
+                }
             }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Body Type")
+        }
+    }
+
+    // MARK: - Sync Section
+
+    private var syncSection: some View {
+        Section {
+            Button(action: {
+                Task {
+                    await dataManager.syncFromCloud()
+                }
+            }) {
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                    Text("Refresh Data")
+                    Spacer()
+                    if dataManager.isLoading {
+                        ProgressView()
+                    }
+                }
+            }
+            .disabled(dataManager.isLoading)
+        } header: {
+            Text("Sync")
         }
     }
 
