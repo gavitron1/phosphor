@@ -32,26 +32,20 @@ struct BodyView: View {
             VStack {
                 HStack {
                     // Stats button (top left)
-                    Button(action: { showStats = true }) {
-                        Image(systemName: "chart.bar.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(dataManager.settings.highlightColor.color)
-                            .frame(width: 44, height: 44)
-                    }
-                    .background(.regularMaterial, in: Circle())
-                    .glassEffect(.regular.interactive())
+                    GlassCircleButton(
+                        systemName: "chart.bar.fill",
+                        color: dataManager.settings.highlightColor.color,
+                        action: { showStats = true }
+                    )
 
                     Spacer()
 
                     // Settings button (top right)
-                    Button(action: { showSettings = true }) {
-                        Image(systemName: "gearshape.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(dataManager.settings.highlightColor.color)
-                            .frame(width: 44, height: 44)
-                    }
-                    .background(.regularMaterial, in: Circle())
-                    .glassEffect(.regular.interactive())
+                    GlassCircleButton(
+                        systemName: "gearshape.fill",
+                        color: dataManager.settings.highlightColor.color,
+                        action: { showSettings = true }
+                    )
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
@@ -109,6 +103,41 @@ struct BodyView: View {
     private func hapticFeedback() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
+    }
+}
+
+// MARK: - Glass Circle Button
+
+struct GlassCircleButton: View {
+    let systemName: String
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 44, height: 44)
+        }
+        .modifier(GlassEffectModifier())
+    }
+}
+
+struct GlassEffectModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .background(.regularMaterial, in: Circle())
+                .glassEffect(.regular.interactive())
+        } else {
+            content
+                .background(
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                )
+        }
     }
 }
 
