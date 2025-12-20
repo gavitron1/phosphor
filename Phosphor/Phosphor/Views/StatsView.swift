@@ -19,14 +19,11 @@ struct StatsView: View {
 
             // Back button
             HStack {
-                Button(action: { dismiss() }) {
-                    Image(systemName: "chevron.left")
-                        .font(.system(size: 18, weight: .semibold))
-                        .foregroundStyle(dataManager.settings.highlightColor.color)
-                        .frame(width: 44, height: 44)
-                }
-                .background(.regularMaterial, in: Circle())
-                .glassEffect(.regular.interactive())
+                GlassCircleButton(
+                    systemName: "chevron.left",
+                    color: dataManager.settings.highlightColor.color,
+                    action: { dismiss() }
+                )
                 .padding(.leading, 16)
                 .padding(.top, 8)
 
