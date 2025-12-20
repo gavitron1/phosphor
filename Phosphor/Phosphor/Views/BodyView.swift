@@ -35,13 +35,11 @@ struct BodyView: View {
                     Button(action: { showStats = true }) {
                         Image(systemName: "chart.bar.fill")
                             .font(.system(size: 18))
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                            )
                             .foregroundStyle(dataManager.settings.highlightColor.color)
+                            .frame(width: 44, height: 44)
                     }
+                    .background(.regularMaterial, in: Circle())
+                    .glassEffect(.regular.interactive())
 
                     Spacer()
 
@@ -49,13 +47,11 @@ struct BodyView: View {
                     Button(action: { showSettings = true }) {
                         Image(systemName: "gearshape.fill")
                             .font(.system(size: 18))
-                            .frame(width: 44, height: 44)
-                            .background(
-                                Circle()
-                                    .fill(.ultraThinMaterial)
-                            )
                             .foregroundStyle(dataManager.settings.highlightColor.color)
+                            .frame(width: 44, height: 44)
                     }
+                    .background(.regularMaterial, in: Circle())
+                    .glassEffect(.regular.interactive())
                 }
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
