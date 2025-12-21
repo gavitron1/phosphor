@@ -147,6 +147,7 @@ struct TappableBodyView: View {
     let gender: Gender
     let side: BodySide
     let highlightColor: Color
+    let darkMode: Bool
     let getIntensity: (MuscleGroup) -> Double
     let onMuscleGroupTapped: (MuscleGroup) -> Void
 
@@ -156,36 +157,71 @@ struct TappableBodyView: View {
     // Cache loaded images for hit testing
     @State private var muscleImages: [MuscleGroup: UIImage] = [:]
 
+    // The base color muscles fade to (white in light mode, black in dark mode)
+    private var baseColor: Color {
+        darkMode ? .black : .white
+    }
+
+    // Blend highlight color with base color based on intensity
+    private func muscleColor(for intensity: Double) -> Color {
+        if intensity <= 0 {
+            return baseColor
+        }
+        // Interpolate between base color and highlight color
+        return highlightColor
+    }
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Layer 1: Black background (bottom)
-                blackBackgroundImage
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                if darkMode {
+                    // Dark mode: White background with black body outline
+                    whiteBackgroundImage
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .colorInvert()
 
-                // Layer 2: White background (above black) - invert colors since PNG is black
-                whiteBackgroundImage
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .colorInvert()
+                    blackBackgroundImage
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .colorInvert()
+                } else {
+                    // Light mode: Black background (bottom)
+                    blackBackgroundImage
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
 
-                // Layer 3+: Muscle layers (display only, no individual hit testing)
+                    // White background (above black) - invert colors since PNG is black
+                    whiteBackgroundImage
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .colorInvert()
+                }
+
+                // Muscle layers (display only, no individual hit testing)
                 ForEach(muscleGroups, id: \.self) { muscleGroup in
                     if let imageName = imageName(for: muscleGroup),
                        let uiImage = UIImage(named: imageName) {
+                        let intensity = getIntensity(muscleGroup)
                         Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .foregroundColor(getIntensity(muscleGroup) > 0 ? highlightColor : .white)
-                            .opacity(getIntensity(muscleGroup) > 0 ? max(0.5, getIntensity(muscleGroup)) : 1.0)
+                            .foregroundColor(muscleColor(for: intensity))
+                            .opacity(intensity > 0 ? max(0.5, intensity) : 1.0)
                     }
                 }
 
                 // Top layer: Non-tappable overlay
-                nonTappableOverlay
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
+                if darkMode {
+                    nonTappableOverlay
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .colorInvert()
+                } else {
+                    nonTappableOverlay
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(Rectangle())
@@ -591,6 +627,7 @@ extension UIImage {
         gender: .male,
         side: .front,
         highlightColor: .orange,
+        darkMode: false,
         getIntensity: { _ in 0.5 },
         onMuscleGroupTapped: { _ in }
     )

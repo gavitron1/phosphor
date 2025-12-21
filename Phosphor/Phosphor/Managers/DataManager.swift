@@ -123,6 +123,15 @@ class DataManager: ObservableObject {
         }
     }
 
+    func updateDarkMode(_ enabled: Bool) {
+        settings.darkMode = enabled
+        saveLocalData()
+
+        Task {
+            await syncSettingsToCloud()
+        }
+    }
+
     // MARK: - iCloud Sync
 
     func syncFromCloud() async {

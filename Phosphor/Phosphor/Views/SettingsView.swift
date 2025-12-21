@@ -14,6 +14,8 @@ struct SettingsView: View {
             Form {
                 genderSection
 
+                appearanceSection
+
                 highlightColorSection
 
                 cooldownSection
@@ -72,6 +74,21 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
         } header: {
             Text("Body Type")
+        }
+    }
+
+    // MARK: - Appearance Section
+
+    private var appearanceSection: some View {
+        Section {
+            Toggle("Dark Mode", isOn: Binding(
+                get: { dataManager.settings.darkMode },
+                set: { dataManager.updateDarkMode($0) }
+            ))
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("Inverts the body figure colors for dark backgrounds.")
         }
     }
 
@@ -149,22 +166,29 @@ struct SettingsView: View {
     private var cooldownSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Cooldown Time")
-                    Spacer()
-                    Text(cooldownText)
-                        .foregroundColor(.secondary)
-                }
+                Text("Cooldown Time")
+                    .font(.subheadline)
 
-                Slider(
-                    value: Binding(
-                        get: { dataManager.settings.cooldownDays },
-                        set: { dataManager.updateCooldownDays($0) }
-                    ),
-                    in: 1...14,
-                    step: 0.5
-                )
-                .tint(dataManager.settings.highlightColor.color)
+                // Preset options
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+                    ForEach(cooldownPresets, id: \.value) { preset in
+                        Button(action: {
+                            dataManager.updateCooldownDays(preset.value)
+                        }) {
+                            Text(preset.label)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 8)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(isSelectedCooldown(preset.value) ? dataManager.settings.highlightColor.color : Color(.systemGray5))
+                                )
+                                .foregroundColor(isSelectedCooldown(preset.value) ? .white : .primary)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                }
 
                 Text("Muscle groups will fade completely after \(cooldownText)")
                     .font(.caption)
@@ -173,14 +197,35 @@ struct SettingsView: View {
             .padding(.vertical, 4)
         } header: {
             Text("Timing")
-        } footer: {
-            Text("The highlight intensity will gradually decrease from 100% to 0% over this period.")
         }
+    }
+
+    private var cooldownPresets: [(label: String, value: Double)] {
+        [
+            ("30 sec", 30.0 / 86400.0),  // 30 seconds in days
+            ("1 min", 60.0 / 86400.0),   // 1 minute in days
+            ("5 min", 300.0 / 86400.0),  // 5 minutes in days
+            ("1 day", 1.0),
+            ("3 days", 3.0),
+            ("7 days", 7.0)
+        ]
+    }
+
+    private func isSelectedCooldown(_ value: Double) -> Bool {
+        abs(dataManager.settings.cooldownDays - value) < 0.0001
     }
 
     private var cooldownText: String {
         let days = dataManager.settings.cooldownDays
-        if days == 1 {
+        let seconds = days * 86400
+
+        if seconds < 60 {
+            return "\(Int(seconds)) seconds"
+        } else if seconds < 3600 {
+            return "\(Int(seconds / 60)) minute\(seconds >= 120 ? "s" : "")"
+        } else if days < 1 {
+            return String(format: "%.1f hours", seconds / 3600)
+        } else if days == 1 {
             return "1 day"
         } else if days == floor(days) {
             return "\(Int(days)) days"

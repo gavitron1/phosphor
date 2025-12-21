@@ -14,20 +14,21 @@ struct BodyView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Body image view
+                // Body image view - use flexible space to maximize image size
                 TappableBodyView(
                     gender: dataManager.settings.gender,
                     side: currentSide,
                     highlightColor: dataManager.settings.highlightColor.color,
+                    darkMode: dataManager.settings.darkMode,
                     getIntensity: { dataManager.getIntensity(for: $0) },
                     onMuscleGroupTapped: { muscleGroup in
                         dataManager.tapMuscleGroup(muscleGroup)
                         hapticFeedback()
                     }
                 )
-                .padding(.horizontal)
-                .padding(.top, 60)
-                .padding(.bottom, 20)
+                .padding(.horizontal, 8)
+                .padding(.top, 56)
+                .padding(.bottom, 8)
 
                 // Front/Back toggle
                 Picker("Side", selection: $currentSide) {
@@ -36,8 +37,8 @@ struct BodyView: View {
                     }
                 }
                 .pickerStyle(.segmented)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 20)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 16)
             }
 
             // Top navigation buttons

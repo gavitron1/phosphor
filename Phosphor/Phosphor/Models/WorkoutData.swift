@@ -31,11 +31,13 @@ struct UserSettings: Codable {
     var highlightColor: CodableColor
     var cooldownDays: Double
     var gender: Gender
+    var darkMode: Bool
 
-    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male) {
+    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, darkMode: Bool = false) {
         self.highlightColor = highlightColor
         self.cooldownDays = cooldownDays
         self.gender = gender
+        self.darkMode = darkMode
     }
 }
 
