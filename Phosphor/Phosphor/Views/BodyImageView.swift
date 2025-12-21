@@ -160,12 +160,14 @@ struct TappableBodyView: View {
                 blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .allowsHitTesting(false)
 
                 // Layer 2: White background (above black) - invert colors since PNG is black
                 whiteBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .colorInvert()
+                    .allowsHitTesting(false)
 
                 // Layer 3+: Muscle layers with hit testing
                 ForEach(muscleGroups.reversed(), id: \.self) { muscleGroup in
@@ -180,10 +182,11 @@ struct TappableBodyView: View {
                     }
                 }
 
-                // Top layer: Non-tappable overlay
+                // Top layer: Non-tappable overlay (disable hit testing)
                 nonTappableOverlay
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+                    .allowsHitTesting(false)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .onAppear { viewSize = geometry.size }
@@ -245,8 +248,9 @@ struct TappableMuscleLayer: View {
                 .aspectRatio(contentMode: .fit)
                 .foregroundColor(currentColor)
                 .opacity(intensity > 0 ? max(0.5, intensity) : 1.0)
-                .contentShape(AlphaHitTestShape(image: uiImage, viewSize: viewSize))
+                .contentShape(Rectangle()) // Simple rectangle hit testing for now
                 .onTapGesture {
+                    print("Tapped: \(imageName)") // Debug
                     onTap()
                 }
         }
