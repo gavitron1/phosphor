@@ -64,15 +64,6 @@ struct BodyView: View {
 
                 Spacer()
             }
-
-            // Error banner
-            if let error = dataManager.syncError {
-                VStack {
-                    Spacer()
-                    errorBanner(error)
-                        .padding()
-                }
-            }
         }
         .fullScreenCover(isPresented: $showStats) {
             StatsView()
@@ -80,20 +71,6 @@ struct BodyView: View {
         .fullScreenCover(isPresented: $showSettings) {
             SettingsView()
         }
-    }
-
-    private func errorBanner(_ error: String) -> some View {
-        HStack {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
-            Text(error)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 6)
-        .background(Color.orange.opacity(0.1))
-        .cornerRadius(8)
     }
 
     private func hapticFeedback() {

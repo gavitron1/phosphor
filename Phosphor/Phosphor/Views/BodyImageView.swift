@@ -46,8 +46,8 @@ struct BodyImageView: View {
     private var backgroundImage: Image {
         let prefix = gender == .male ? "male" : "female"
         let sideStr = side == .front ? "front" : "back"
-        let bg = colorScheme == .dark ? "black" : "white"
-        return Image("\(prefix)-\(sideStr)-body-bkg-\(bg)")
+        // Always use black background so white muscle images show on top
+        return Image("\(prefix)-\(sideStr)-body-bkg-black")
     }
 
     private var nonTappableOverlay: Image {
@@ -177,8 +177,8 @@ struct TappableBodyView: View {
     private var backgroundImage: Image {
         let prefix = gender == .male ? "male" : "female"
         let sideStr = side == .front ? "front" : "back"
-        let bg = colorScheme == .dark ? "black" : "white"
-        return Image("\(prefix)-\(sideStr)-body-bkg-\(bg)")
+        // Always use black background so white muscle images show on top
+        return Image("\(prefix)-\(sideStr)-body-bkg-black")
     }
 
     private var nonTappableOverlay: Image {
@@ -212,7 +212,9 @@ struct TappableMuscleLayer: View {
             Image(uiImage: uiImage)
                 .resizable()
                 .aspectRatio(contentMode: .fit)
-                .colorMultiply(intensity > 0 ? highlightColor.opacity(0.3 + intensity * 0.7) : .white)
+                // White images stay white when intensity is 0, turn to highlight color when tapped
+                .colorMultiply(intensity > 0 ? highlightColor : .white)
+                .opacity(intensity > 0 ? max(0.4, intensity) : 1.0)
                 .contentShape(AlphaHitTestShape(image: uiImage, viewSize: viewSize))
                 .onTapGesture {
                     onTap()

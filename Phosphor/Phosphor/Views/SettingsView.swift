@@ -94,6 +94,17 @@ struct SettingsView: View {
                 }
             }
             .disabled(dataManager.isLoading)
+
+            // Show sync error if present
+            if let error = dataManager.syncError {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.orange)
+                    Text(error)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
         } header: {
             Text("Sync")
         }
