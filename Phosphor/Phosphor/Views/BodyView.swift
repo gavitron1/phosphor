@@ -5,27 +5,39 @@ struct BodyView: View {
 
     @State private var showStats = false
     @State private var showSettings = false
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12),
-        GridItem(.flexible(), spacing: 12)
-    ]
+    @State private var currentSide: BodySide = .front
 
     var body: some View {
         ZStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    headerView
+            // Background
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
 
-                    muscleGroupGrid
+            VStack(spacing: 0) {
+                // Body image view
+                TappableBodyView(
+                    gender: dataManager.settings.gender,
+                    side: currentSide,
+                    highlightColor: dataManager.settings.highlightColor.color,
+                    getIntensity: { dataManager.getIntensity(for: $0) },
+                    onMuscleGroupTapped: { muscleGroup in
+                        dataManager.tapMuscleGroup(muscleGroup)
+                        hapticFeedback()
+                    }
+                )
+                .padding(.horizontal)
+                .padding(.top, 60)
+                .padding(.bottom, 20)
+
+                // Front/Back toggle
+                Picker("Side", selection: $currentSide) {
+                    ForEach(BodySide.allCases, id: \.self) { side in
+                        Text(side.rawValue).tag(side)
+                    }
                 }
-                .padding()
-                .padding(.top, 50)
-            }
-            .background(Color(.systemGroupedBackground))
-            .refreshable {
-                await dataManager.syncFromCloud()
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 40)
+                .padding(.bottom, 20)
             }
 
             // Top navigation buttons
@@ -52,6 +64,15 @@ struct BodyView: View {
 
                 Spacer()
             }
+
+            // Error banner
+            if let error = dataManager.syncError {
+                VStack {
+                    Spacer()
+                    errorBanner(error)
+                        .padding()
+                }
+            }
         }
         .fullScreenCover(isPresented: $showStats) {
             StatsView()
@@ -61,43 +82,18 @@ struct BodyView: View {
         }
     }
 
-    private var headerView: some View {
-        VStack(spacing: 8) {
-            Text("Tap a muscle group after your workout")
-                .font(.subheadline)
+    private func errorBanner(_ error: String) -> some View {
+        HStack {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundColor(.orange)
+            Text(error)
+                .font(.caption)
                 .foregroundColor(.secondary)
-
-            if let error = dataManager.syncError {
-                HStack {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundColor(.orange)
-                    Text(error)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .background(Color.orange.opacity(0.1))
-                .cornerRadius(8)
-            }
         }
-    }
-
-    private var muscleGroupGrid: some View {
-        LazyVGrid(columns: columns, spacing: 12) {
-            ForEach(MuscleGroup.allCases) { group in
-                MuscleGroupButton(
-                    muscleGroup: group,
-                    intensity: dataManager.getIntensity(for: group),
-                    highlightColor: dataManager.settings.highlightColor.color,
-                    onTap: {
-                        dataManager.tapMuscleGroup(group)
-                        hapticFeedback()
-                    }
-                )
-                .frame(height: 100)
-            }
-        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
+        .background(Color.orange.opacity(0.1))
+        .cornerRadius(8)
     }
 
     private func hapticFeedback() {
