@@ -1,5 +1,10 @@
 import SwiftUI
 
+enum CooldownMode: String, CaseIterable {
+    case minutes = "Minutes"
+    case days = "Days"
+}
+
 struct SettingsView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var cloudKitManager = CloudKitManager.shared
@@ -8,6 +13,7 @@ struct SettingsView: View {
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var deleteError: String?
+    @State private var cooldownMode: CooldownMode = .days
 
     var body: some View {
         ZStack(alignment: .topLeading) {
@@ -149,22 +155,20 @@ struct SettingsView: View {
     private var cooldownSection: some View {
         Section {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    Text("Cooldown Time")
-                    Spacer()
-                    Text(cooldownText)
-                        .foregroundColor(.secondary)
+                // Mode toggle
+                Picker("Mode", selection: $cooldownMode) {
+                    ForEach(CooldownMode.allCases, id: \.self) { mode in
+                        Text(mode.rawValue).tag(mode)
+                    }
                 }
+                .pickerStyle(.segmented)
 
-                Slider(
-                    value: Binding(
-                        get: { dataManager.settings.cooldownDays },
-                        set: { dataManager.updateCooldownDays($0) }
-                    ),
-                    in: 1...14,
-                    step: 0.5
-                )
-                .tint(dataManager.settings.highlightColor.color)
+                // Preset buttons based on mode
+                if cooldownMode == .minutes {
+                    minutesPresetButtons
+                } else {
+                    daysPresetButtons
+                }
 
                 Text("Muscle groups will fade completely after \(cooldownText)")
                     .font(.caption)
@@ -172,15 +176,100 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
         } header: {
-            Text("Timing")
+            Text("Cooldown Time")
         } footer: {
             Text("The highlight intensity will gradually decrease from 100% to 0% over this period.")
         }
     }
 
+    private var minutesPresetButtons: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
+            ForEach(minutesPresets, id: \.value) { preset in
+                Button(action: {
+                    dataManager.updateCooldownDays(preset.value)
+                }) {
+                    Text(preset.label)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            isPresetSelected(preset.value)
+                                ? dataManager.settings.highlightColor.color
+                                : Color(.systemGray5)
+                        )
+                        .foregroundColor(isPresetSelected(preset.value) ? .white : .primary)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+    }
+
+    private var daysPresetButtons: some View {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
+            ForEach(daysPresets, id: \.value) { preset in
+                Button(action: {
+                    dataManager.updateCooldownDays(preset.value)
+                }) {
+                    Text(preset.label)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 10)
+                        .background(
+                            isPresetSelected(preset.value)
+                                ? dataManager.settings.highlightColor.color
+                                : Color(.systemGray5)
+                        )
+                        .foregroundColor(isPresetSelected(preset.value) ? .white : .primary)
+                        .cornerRadius(8)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+    }
+
+    private var minutesPresets: [(label: String, value: Double)] {
+        [
+            ("10 sec", 10.0 / 86400.0),
+            ("30 sec", 30.0 / 86400.0),
+            ("1 min", 60.0 / 86400.0),
+            ("2 min", 120.0 / 86400.0),
+            ("3 min", 180.0 / 86400.0),
+            ("5 min", 300.0 / 86400.0)
+        ]
+    }
+
+    private var daysPresets: [(label: String, value: Double)] {
+        [
+            ("1 day", 1.0),
+            ("2 days", 2.0),
+            ("3 days", 3.0),
+            ("4 days", 4.0),
+            ("5 days", 5.0),
+            ("6 days", 6.0),
+            ("7 days", 7.0)
+        ]
+    }
+
+    private func isPresetSelected(_ value: Double) -> Bool {
+        abs(dataManager.settings.cooldownDays - value) < 0.001
+    }
+
     private var cooldownText: String {
         let days = dataManager.settings.cooldownDays
-        if days == 1 {
+        let totalSeconds = days * 86400
+
+        if totalSeconds < 60 {
+            return "\(Int(totalSeconds)) seconds"
+        } else if totalSeconds < 3600 {
+            let minutes = Int(totalSeconds / 60)
+            return minutes == 1 ? "1 minute" : "\(minutes) minutes"
+        } else if days < 1 {
+            let hours = Int(totalSeconds / 3600)
+            return hours == 1 ? "1 hour" : "\(hours) hours"
+        } else if days == 1 {
             return "1 day"
         } else if days == floor(days) {
             return "\(Int(days)) days"
