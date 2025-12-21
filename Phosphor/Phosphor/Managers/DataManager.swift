@@ -218,8 +218,8 @@ class DataManager: ObservableObject {
     // MARK: - Timer for UI Updates
 
     private func startIntensityUpdateTimer() {
-        // Update every minute to refresh intensity values
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+        // Update every second to refresh intensity values for smooth animation
+        syncTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.objectWillChange.send()
             }

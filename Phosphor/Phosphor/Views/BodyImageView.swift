@@ -168,7 +168,10 @@ struct TappableBodyView: View {
             return baseColor
         }
         // Interpolate between base color and highlight color
-        return highlightColor
+        // intensity of 1.0 = full highlight, intensity of 0.0 = base color
+        return Color(
+            UIColor(highlightColor).interpolate(to: UIColor(baseColor), fraction: 1.0 - intensity)
+        )
     }
 
     var body: some View {
@@ -208,6 +211,7 @@ struct TappableBodyView: View {
                             .aspectRatio(contentMode: .fit)
                             .foregroundColor(muscleColor(for: intensity))
                             .opacity(intensity > 0 ? max(0.5, intensity) : 1.0)
+                            .animation(.easeInOut(duration: 0.5), value: intensity)
                     }
                 }
 
@@ -619,6 +623,25 @@ extension UIImage {
         context.fill(rect)
 
         return UIGraphicsGetImageFromCurrentImageContext() ?? self
+    }
+}
+
+extension UIColor {
+    func interpolate(to color: UIColor, fraction: Double) -> UIColor {
+        let f = CGFloat(max(0, min(1, fraction)))
+
+        var r1: CGFloat = 0, g1: CGFloat = 0, b1: CGFloat = 0, a1: CGFloat = 0
+        var r2: CGFloat = 0, g2: CGFloat = 0, b2: CGFloat = 0, a2: CGFloat = 0
+
+        self.getRed(&r1, green: &g1, blue: &b1, alpha: &a1)
+        color.getRed(&r2, green: &g2, blue: &b2, alpha: &a2)
+
+        return UIColor(
+            red: r1 + (r2 - r1) * f,
+            green: g1 + (g2 - g1) * f,
+            blue: b1 + (b2 - b1) * f,
+            alpha: a1 + (a2 - a1) * f
+        )
     }
 }
 

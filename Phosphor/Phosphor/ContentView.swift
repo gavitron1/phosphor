@@ -5,6 +5,7 @@ struct ContentView: View {
 
     var body: some View {
         BodyView()
+            .preferredColorScheme(dataManager.settings.darkMode ? .dark : .light)
             .onAppear {
                 Task {
                     await dataManager.syncFromCloud()
