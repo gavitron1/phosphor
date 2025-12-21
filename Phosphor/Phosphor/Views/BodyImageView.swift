@@ -18,13 +18,13 @@ struct BodyImageView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Layer 1: Black background (bottom)
-                blackBackgroundImage
+                // Layer 1: White background (the white body)
+                whiteBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
-                // Layer 2: White background (above black)
-                whiteBackgroundImage
+                // Layer 2: Black background (outlines/definition on top)
+                blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
@@ -155,13 +155,13 @@ struct TappableBodyView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Layer 1: Black background (bottom)
-                blackBackgroundImage
+                // Layer 1: White background (the white body)
+                whiteBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
-                // Layer 2: White background (above black)
-                whiteBackgroundImage
+                // Layer 2: Black background (outlines/definition on top)
+                blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
