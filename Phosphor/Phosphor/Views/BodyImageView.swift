@@ -18,17 +18,17 @@ struct BodyImageView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background body image
-                backgroundImage
+                // Layer 1: Black background (bottom)
+                blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
-                // Non-tappable overlay (hands, feet, knees, hair)
-                nonTappableOverlay
+                // Layer 2: White background (above black)
+                whiteBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
-                // Tappable muscle layers
+                // Layer 3+: Tappable muscle layers
                 ForEach(muscleGroups, id: \.self) { muscleGroup in
                     MuscleLayerView(
                         muscleGroup: muscleGroup,
@@ -38,16 +38,26 @@ struct BodyImageView: View {
                         onTap: { onMuscleGroupTapped(muscleGroup) }
                     )
                 }
+
+                // Top layer: Non-tappable overlay (hands, feet, knees, hair)
+                nonTappableOverlay
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
         }
     }
 
-    private var backgroundImage: Image {
+    private var blackBackgroundImage: Image {
         let prefix = gender == .male ? "male" : "female"
         let sideStr = side == .front ? "front" : "back"
-        // Always use black background so white muscle images show on top
         return Image("\(prefix)-\(sideStr)-body-bkg-black")
+    }
+
+    private var whiteBackgroundImage: Image {
+        let prefix = gender == .male ? "male" : "female"
+        let sideStr = side == .front ? "front" : "back"
+        return Image("\(prefix)-\(sideStr)-body-bkg-white")
     }
 
     private var nonTappableOverlay: Image {
@@ -145,17 +155,17 @@ struct TappableBodyView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Background body image
-                backgroundImage
+                // Layer 1: Black background (bottom)
+                blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
-                // Non-tappable overlay
-                nonTappableOverlay
+                // Layer 2: White background (above black)
+                whiteBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
 
-                // Muscle layers with hit testing
+                // Layer 3+: Muscle layers with hit testing
                 ForEach(muscleGroups.reversed(), id: \.self) { muscleGroup in
                     if let imageName = imageName(for: muscleGroup) {
                         TappableMuscleLayer(
@@ -167,6 +177,11 @@ struct TappableBodyView: View {
                         )
                     }
                 }
+
+                // Top layer: Non-tappable overlay
+                nonTappableOverlay
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .onAppear { viewSize = geometry.size }
@@ -174,11 +189,16 @@ struct TappableBodyView: View {
         }
     }
 
-    private var backgroundImage: Image {
+    private var blackBackgroundImage: Image {
         let prefix = gender == .male ? "male" : "female"
         let sideStr = side == .front ? "front" : "back"
-        // Always use black background so white muscle images show on top
         return Image("\(prefix)-\(sideStr)-body-bkg-black")
+    }
+
+    private var whiteBackgroundImage: Image {
+        let prefix = gender == .male ? "male" : "female"
+        let sideStr = side == .front ? "front" : "back"
+        return Image("\(prefix)-\(sideStr)-body-bkg-white")
     }
 
     private var nonTappableOverlay: Image {
