@@ -153,6 +153,9 @@ struct TappableBodyView: View {
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewSize: CGSize = .zero
 
+    // Cache loaded images for hit testing
+    @State private var muscleImages: [MuscleGroup: UIImage] = [:]
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -160,38 +163,121 @@ struct TappableBodyView: View {
                 blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .allowsHitTesting(false)
 
                 // Layer 2: White background (above black) - invert colors since PNG is black
                 whiteBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .colorInvert()
-                    .allowsHitTesting(false)
 
-                // Layer 3+: Muscle layers with hit testing
-                ForEach(muscleGroups.reversed(), id: \.self) { muscleGroup in
-                    if let imageName = imageName(for: muscleGroup) {
-                        TappableMuscleLayer(
-                            imageName: imageName,
-                            intensity: getIntensity(muscleGroup),
-                            highlightColor: highlightColor,
-                            viewSize: geometry.size,
-                            onTap: { onMuscleGroupTapped(muscleGroup) }
-                        )
+                // Layer 3+: Muscle layers (display only, no individual hit testing)
+                ForEach(muscleGroups, id: \.self) { muscleGroup in
+                    if let imageName = imageName(for: muscleGroup),
+                       let uiImage = UIImage(named: imageName) {
+                        Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .foregroundColor(getIntensity(muscleGroup) > 0 ? highlightColor : .white)
+                            .opacity(getIntensity(muscleGroup) > 0 ? max(0.5, getIntensity(muscleGroup)) : 1.0)
                     }
                 }
 
-                // Top layer: Non-tappable overlay (disable hit testing)
+                // Top layer: Non-tappable overlay
                 nonTappableOverlay
                     .resizable()
                     .aspectRatio(contentMode: .fit)
-                    .allowsHitTesting(false)
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
-            .onAppear { viewSize = geometry.size }
+            .contentShape(Rectangle())
+            .gesture(
+                SpatialTapGesture()
+                    .onEnded { value in
+                        handleTap(at: value.location, viewSize: geometry.size)
+                    }
+            )
+            .onAppear {
+                viewSize = geometry.size
+                loadMuscleImages()
+            }
             .onChange(of: geometry.size) { _, newSize in viewSize = newSize }
         }
+    }
+
+    private func loadMuscleImages() {
+        for muscleGroup in muscleGroups {
+            if let imageName = imageName(for: muscleGroup),
+               let image = UIImage(named: imageName) {
+                muscleImages[muscleGroup] = image
+            }
+        }
+    }
+
+    private func handleTap(at point: CGPoint, viewSize: CGSize) {
+        // Check muscle groups from top to bottom (reversed order)
+        for muscleGroup in muscleGroups.reversed() {
+            if let image = muscleImages[muscleGroup],
+               isNonTransparentPixel(at: point, in: image, viewSize: viewSize) {
+                print("HIT: \(muscleGroup.rawValue)")
+                onMuscleGroupTapped(muscleGroup)
+                return // Stop at first hit
+            }
+        }
+        print("No muscle hit at \(point)")
+    }
+
+    private func isNonTransparentPixel(at point: CGPoint, in image: UIImage, viewSize: CGSize) -> Bool {
+        guard let cgImage = image.cgImage else { return false }
+
+        let imageWidth = CGFloat(cgImage.width)
+        let imageHeight = CGFloat(cgImage.height)
+
+        // Calculate the actual displayed image size (aspect fit)
+        let imageAspect = imageWidth / imageHeight
+        let viewAspect = viewSize.width / viewSize.height
+
+        var displayedWidth: CGFloat
+        var displayedHeight: CGFloat
+        var offsetX: CGFloat = 0
+        var offsetY: CGFloat = 0
+
+        if imageAspect > viewAspect {
+            displayedWidth = viewSize.width
+            displayedHeight = viewSize.width / imageAspect
+            offsetY = (viewSize.height - displayedHeight) / 2
+        } else {
+            displayedHeight = viewSize.height
+            displayedWidth = viewSize.height * imageAspect
+            offsetX = (viewSize.width - displayedWidth) / 2
+        }
+
+        let adjustedX = point.x - offsetX
+        let adjustedY = point.y - offsetY
+
+        guard adjustedX >= 0, adjustedX < displayedWidth,
+              adjustedY >= 0, adjustedY < displayedHeight else {
+            return false
+        }
+
+        let imageX = Int(adjustedX / displayedWidth * imageWidth)
+        let imageY = Int(adjustedY / displayedHeight * imageHeight)
+
+        guard imageX >= 0, imageX < Int(imageWidth),
+              imageY >= 0, imageY < Int(imageHeight) else {
+            return false
+        }
+
+        guard let dataProvider = cgImage.dataProvider,
+              let data = dataProvider.data,
+              let bytes = CFDataGetBytePtr(data) else {
+            return false
+        }
+
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        let bytesPerRow = cgImage.bytesPerRow
+        let pixelOffset = imageY * bytesPerRow + imageX * bytesPerPixel
+
+        let alpha = bytes[pixelOffset + bytesPerPixel - 1]
+        return alpha > 30
     }
 
     private var blackBackgroundImage: Image {
@@ -232,6 +318,8 @@ struct TappableMuscleLayer: View {
     let viewSize: CGSize
     let onTap: () -> Void
 
+    @State private var imageSize: CGSize = .zero
+
     // Blend from white to highlight color based on intensity
     private var currentColor: Color {
         if intensity <= 0 {
@@ -243,17 +331,94 @@ struct TappableMuscleLayer: View {
 
     var body: some View {
         if let uiImage = UIImage(named: imageName) {
-            Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .foregroundColor(currentColor)
-                .opacity(intensity > 0 ? max(0.5, intensity) : 1.0)
-                .contentShape(Rectangle()) // Simple rectangle hit testing for now
-                .onTapGesture {
-                    print("Tapped: \(imageName)") // Debug
-                    onTap()
-                }
+            GeometryReader { geometry in
+                Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .foregroundColor(currentColor)
+                    .opacity(intensity > 0 ? max(0.5, intensity) : 1.0)
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        SpatialTapGesture()
+                            .onEnded { value in
+                                let location = value.location
+                                if isNonTransparentPixel(at: location, in: uiImage, viewSize: geometry.size) {
+                                    print("Tapped \(imageName) at \(location) - HIT!")
+                                    onTap()
+                                } else {
+                                    print("Tapped \(imageName) at \(location) - transparent, passing through")
+                                }
+                            }
+                    )
+                    .onAppear {
+                        imageSize = geometry.size
+                    }
+            }
         }
+    }
+
+    private func isNonTransparentPixel(at point: CGPoint, in image: UIImage, viewSize: CGSize) -> Bool {
+        guard let cgImage = image.cgImage else { return false }
+
+        let imageWidth = CGFloat(cgImage.width)
+        let imageHeight = CGFloat(cgImage.height)
+
+        // Calculate the actual displayed image size (aspect fit)
+        let imageAspect = imageWidth / imageHeight
+        let viewAspect = viewSize.width / viewSize.height
+
+        var displayedWidth: CGFloat
+        var displayedHeight: CGFloat
+        var offsetX: CGFloat = 0
+        var offsetY: CGFloat = 0
+
+        if imageAspect > viewAspect {
+            // Image is wider - fit to width
+            displayedWidth = viewSize.width
+            displayedHeight = viewSize.width / imageAspect
+            offsetY = (viewSize.height - displayedHeight) / 2
+        } else {
+            // Image is taller - fit to height
+            displayedHeight = viewSize.height
+            displayedWidth = viewSize.height * imageAspect
+            offsetX = (viewSize.width - displayedWidth) / 2
+        }
+
+        // Adjust tap point for offset
+        let adjustedX = point.x - offsetX
+        let adjustedY = point.y - offsetY
+
+        // Check if tap is within the displayed image bounds
+        guard adjustedX >= 0, adjustedX < displayedWidth,
+              adjustedY >= 0, adjustedY < displayedHeight else {
+            return false
+        }
+
+        // Convert to image coordinates
+        let imageX = Int(adjustedX / displayedWidth * imageWidth)
+        let imageY = Int(adjustedY / displayedHeight * imageHeight)
+
+        guard imageX >= 0, imageX < Int(imageWidth),
+              imageY >= 0, imageY < Int(imageHeight) else {
+            return false
+        }
+
+        // Get pixel data
+        guard let dataProvider = cgImage.dataProvider,
+              let data = dataProvider.data,
+              let bytes = CFDataGetBytePtr(data) else {
+            return false
+        }
+
+        let bytesPerPixel = cgImage.bitsPerPixel / 8
+        let bytesPerRow = cgImage.bytesPerRow
+        let pixelOffset = imageY * bytesPerRow + imageX * bytesPerPixel
+
+        // Check alpha channel (last byte in RGBA)
+        let alpha = bytes[pixelOffset + bytesPerPixel - 1]
+
+        return alpha > 30 // Consider non-transparent if alpha > 30
     }
 }
 
