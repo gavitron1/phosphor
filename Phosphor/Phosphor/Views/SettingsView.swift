@@ -192,6 +192,15 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
             }
             .padding(.vertical, 4)
+            .onAppear {
+                // Auto-detect mode based on current value
+                let days = dataManager.settings.cooldownDays
+                if days < 1 {
+                    cooldownMode = .minutes
+                } else {
+                    cooldownMode = .days
+                }
+            }
         } header: {
             Text("Cooldown Time")
         } footer: {
@@ -201,7 +210,8 @@ struct SettingsView: View {
 
     private var minutesPresetButtons: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
-            ForEach(minutesPresets, id: \.value) { preset in
+            ForEach(minutesPresets, id: \.label) { preset in
+                let isSelected = isMinutesPresetSelected(preset.value)
                 Button(action: {
                     dataManager.updateCooldownDays(preset.value)
                 }) {
@@ -211,11 +221,11 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
-                            isPresetSelected(preset.value)
+                            isSelected
                                 ? dataManager.settings.highlightColor.color
                                 : Color(.systemGray5)
                         )
-                        .foregroundColor(isPresetSelected(preset.value) ? .white : .primary)
+                        .foregroundColor(isSelected ? .white : .primary)
                         .cornerRadius(8)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -225,7 +235,8 @@ struct SettingsView: View {
 
     private var daysPresetButtons: some View {
         LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
-            ForEach(daysPresets, id: \.value) { preset in
+            ForEach(daysPresets, id: \.label) { preset in
+                let isSelected = isDaysPresetSelected(preset.value)
                 Button(action: {
                     dataManager.updateCooldownDays(preset.value)
                 }) {
@@ -235,11 +246,11 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 10)
                         .background(
-                            isPresetSelected(preset.value)
+                            isSelected
                                 ? dataManager.settings.highlightColor.color
                                 : Color(.systemGray5)
                         )
-                        .foregroundColor(isPresetSelected(preset.value) ? .white : .primary)
+                        .foregroundColor(isSelected ? .white : .primary)
                         .cornerRadius(8)
                 }
                 .buttonStyle(PlainButtonStyle())
@@ -270,8 +281,14 @@ struct SettingsView: View {
         ]
     }
 
-    private func isPresetSelected(_ value: Double) -> Bool {
-        abs(dataManager.settings.cooldownDays - value) < 0.001
+    private func isMinutesPresetSelected(_ value: Double) -> Bool {
+        guard cooldownMode == .minutes else { return false }
+        return abs(dataManager.settings.cooldownDays - value) < 0.0001
+    }
+
+    private func isDaysPresetSelected(_ value: Double) -> Bool {
+        guard cooldownMode == .days else { return false }
+        return abs(dataManager.settings.cooldownDays - value) < 0.01
     }
 
     private var cooldownText: String {

@@ -14,7 +14,7 @@ struct BodyView: View {
                 .ignoresSafeArea()
 
             VStack(spacing: 0) {
-                // Body image view - maximized with 80px top/bottom padding
+                // Body image view - fills safe area
                 TappableBodyView(
                     gender: dataManager.settings.gender,
                     side: currentSide,
@@ -26,9 +26,6 @@ struct BodyView: View {
                         hapticFeedback()
                     }
                 )
-                .padding(.top, 80)
-
-                Spacer()
 
                 // Front/Back toggle
                 Picker("Side", selection: $currentSide) {
@@ -38,7 +35,7 @@ struct BodyView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 40)
-                .padding(.bottom, 80)
+                .padding(.bottom, 8)
             }
 
             // Top navigation buttons
