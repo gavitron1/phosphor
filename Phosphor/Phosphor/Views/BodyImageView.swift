@@ -18,15 +18,16 @@ struct BodyImageView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Layer 1: White background (the white body)
-                whiteBackgroundImage
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-
-                // Layer 2: Black background (outlines/definition on top)
+                // Layer 1: Black background (bottom)
                 blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+
+                // Layer 2: White background (above black) - invert colors since PNG is black
+                whiteBackgroundImage
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .colorInvert()
 
                 // Layer 3+: Tappable muscle layers
                 ForEach(muscleGroups, id: \.self) { muscleGroup in
@@ -155,15 +156,16 @@ struct TappableBodyView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Layer 1: White background (the white body)
-                whiteBackgroundImage
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-
-                // Layer 2: Black background (outlines/definition on top)
+                // Layer 1: Black background (bottom)
                 blackBackgroundImage
                     .resizable()
                     .aspectRatio(contentMode: .fit)
+
+                // Layer 2: White background (above black) - invert colors since PNG is black
+                whiteBackgroundImage
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .colorInvert()
 
                 // Layer 3+: Muscle layers with hit testing
                 ForEach(muscleGroups.reversed(), id: \.self) { muscleGroup in
