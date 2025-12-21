@@ -17,7 +17,7 @@
 		001A00008 /* BodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F00008 /* BodyView.swift */; };
 		001A00009 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F00009 /* SettingsView.swift */; };
 		001A00010 /* StatsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F00010 /* StatsView.swift */; };
-		001A00011 /* MuscleGroupButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F00011 /* MuscleGroupButton.swift */; };
+		AE41ED1B2EF87CCE0098B4EE /* BodyImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE41ED1A2EF87CCE0098B4EE /* BodyImageView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,10 +31,10 @@
 		001F00008 /* BodyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyView.swift; sourceTree = "<group>"; };
 		001F00009 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		001F00010 /* StatsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsView.swift; sourceTree = "<group>"; };
-		001F00011 /* MuscleGroupButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleGroupButton.swift; sourceTree = "<group>"; };
 		001F00012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		001F00013 /* Phosphor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Phosphor.entitlements; sourceTree = "<group>"; };
 		001P00001 /* Phosphor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Phosphor.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE41ED1A2EF87CCE0098B4EE /* BodyImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyImageView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -100,10 +100,10 @@
 		001G00006 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AE41ED1A2EF87CCE0098B4EE /* BodyImageView.swift */,
 				001F00008 /* BodyView.swift */,
 				001F00009 /* SettingsView.swift */,
 				001F00010 /* StatsView.swift */,
-				001F00011 /* MuscleGroupButton.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -181,12 +181,12 @@
 				001A00002 /* ContentView.swift in Sources */,
 				001A00004 /* MuscleGroup.swift in Sources */,
 				001A00005 /* WorkoutData.swift in Sources */,
+				AE41ED1B2EF87CCE0098B4EE /* BodyImageView.swift in Sources */,
 				001A00006 /* CloudKitManager.swift in Sources */,
 				001A00007 /* DataManager.swift in Sources */,
 				001A00008 /* BodyView.swift in Sources */,
 				001A00009 /* SettingsView.swift in Sources */,
 				001A00010 /* StatsView.swift in Sources */,
-				001A00011 /* MuscleGroupButton.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
