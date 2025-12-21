@@ -229,28 +229,26 @@ struct TappableMuscleLayer: View {
     let viewSize: CGSize
     let onTap: () -> Void
 
+    // Blend from white to highlight color based on intensity
+    private var currentColor: Color {
+        if intensity <= 0 {
+            return .white
+        } else {
+            return highlightColor
+        }
+    }
+
     var body: some View {
         if let uiImage = UIImage(named: imageName) {
-            ZStack {
-                // Base white layer (always visible, fades in as intensity decreases)
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .colorInvert() // Make black PNG white
-                    .opacity(1.0 - intensity) // Fully visible when intensity is 0, fades as intensity increases
-
-                // Highlight color layer (visible when tapped, fades over cooldown)
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .colorInvert() // Make black PNG white first
-                    .colorMultiply(highlightColor) // Then tint with highlight color
-                    .opacity(intensity) // Visible based on intensity
-            }
-            .contentShape(AlphaHitTestShape(image: uiImage, viewSize: viewSize))
-            .onTapGesture {
-                onTap()
-            }
+            Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .foregroundColor(currentColor)
+                .opacity(intensity > 0 ? max(0.5, intensity) : 1.0)
+                .contentShape(AlphaHitTestShape(image: uiImage, viewSize: viewSize))
+                .onTapGesture {
+                    onTap()
+                }
         }
     }
 }
