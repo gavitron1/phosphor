@@ -7,6 +7,7 @@ struct BodyView: View {
     @State private var currentSide: BodySide = .front
     @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
     @State private var isDragging: Bool = false
+    @State private var showCooldownPopover: Bool = false
 
     // Muscle feedback label state
     @State private var feedbackText: String = ""
@@ -134,16 +135,40 @@ struct BodyView: View {
                     .padding(.trailing, 8)
                 }
 
-                // Layer 3: Date label overlay
+                // Layer 3: Top bar overlay (clock button + date label)
                 VStack {
-                    Text(showFeedback ? feedbackText : dateText)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(showFeedback ? dataManager.settings.highlightColor.color : (isViewingHistory ? dataManager.settings.highlightColor.color : .primary))
-                        .padding(.top, 18)
-                        .allowsHitTesting(false)
-                        .animation(.easeInOut(duration: 0.3), value: showFeedback)
-                        .id(showFeedback ? feedbackText : "date")
+                    HStack {
+                        // Clock button (top left)
+                        GlassCircleButton(
+                            systemName: "clock.fill",
+                            color: dataManager.settings.highlightColor.color,
+                            action: {
+                                showCooldownPopover = true
+                            }
+                        )
+                        .popover(isPresented: $showCooldownPopover) {
+                            CooldownPopoverView(dataManager: dataManager)
+                        }
+
+                        Spacer()
+
+                        // Date/feedback label (center)
+                        Text(showFeedback ? feedbackText : dateText)
+                            .font(.headline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(showFeedback ? dataManager.settings.highlightColor.color : (isViewingHistory ? dataManager.settings.highlightColor.color : .primary))
+                            .allowsHitTesting(false)
+                            .animation(.easeInOut(duration: 0.3), value: showFeedback)
+                            .id(showFeedback ? feedbackText : "date")
+
+                        Spacer()
+
+                        // Invisible spacer to balance layout
+                        Color.clear
+                            .frame(width: 44, height: 44)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.top, 8)
 
                     Spacer()
                 }
@@ -361,6 +386,56 @@ struct GlassEffectModifier: ViewModifier {
                         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
                 )
         }
+    }
+}
+
+// MARK: - Cooldown Popover View
+
+struct CooldownPopoverView: View {
+    @ObservedObject var dataManager: DataManager
+
+    private var cooldownText: String {
+        let days = Int(dataManager.settings.cooldownDays)
+        return days == 1 ? "1 day" : "\(days) days"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Recovery Time")
+                .font(.headline)
+                .fontWeight(.semibold)
+
+            // Slider with tickmarks
+            VStack(spacing: 8) {
+                // Tickmarks
+                HStack {
+                    ForEach(1...7, id: \.self) { day in
+                        Text("\(day)")
+                            .font(.caption2)
+                            .foregroundColor(Int(dataManager.settings.cooldownDays) == day ? dataManager.settings.highlightColor.color : .secondary)
+                            .frame(maxWidth: .infinity)
+                    }
+                }
+
+                // Slider
+                Slider(
+                    value: Binding(
+                        get: { dataManager.settings.cooldownDays },
+                        set: { dataManager.updateCooldownDays($0) }
+                    ),
+                    in: 1...7,
+                    step: 1
+                )
+                .tint(dataManager.settings.highlightColor.color)
+            }
+
+            Text("Muscles will fully recover after \(cooldownText)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(20)
+        .frame(width: 280)
+        .presentationCompactAdaptation(.popover)
     }
 }
 

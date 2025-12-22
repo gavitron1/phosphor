@@ -16,10 +16,6 @@ struct SettingsView: View {
 
                 appearanceSection
 
-                highlightColorSection
-
-                cooldownSection
-
                 notificationSection
 
                 syncSection
@@ -74,10 +70,22 @@ struct SettingsView: View {
                 get: { dataManager.settings.darkMode },
                 set: { dataManager.updateDarkMode($0) }
             ))
+
+            // Color picker grid
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
+                ForEach(Array(CodableColor.presetColors.enumerated()), id: \.offset) { index, presetColor in
+                    ColorButton(
+                        color: presetColor,
+                        isSelected: isColorSelected(presetColor),
+                        action: {
+                            dataManager.updateHighlightColor(presetColor)
+                        }
+                    )
+                }
+            }
+            .padding(.vertical, 8)
         } header: {
             Text("Appearance")
-        } footer: {
-            Text("Inverts the body figure colors for dark backgrounds.")
         }
     }
 
@@ -165,84 +173,11 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: - Highlight Color Section
-
-    private var highlightColorSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Choose your highlight color")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {
-                    ForEach(Array(CodableColor.presetColors.enumerated()), id: \.offset) { index, presetColor in
-                        ColorButton(
-                            color: presetColor,
-                            isSelected: isColorSelected(presetColor),
-                            action: {
-                                dataManager.updateHighlightColor(presetColor)
-                            }
-                        )
-                    }
-                }
-            }
-            .padding(.vertical, 8)
-        } header: {
-            Text("Highlight Color")
-        }
-    }
-
     private func isColorSelected(_ color: CodableColor) -> Bool {
         let current = dataManager.settings.highlightColor
         return abs(current.red - color.red) < 0.01 &&
                abs(current.green - color.green) < 0.01 &&
                abs(current.blue - color.blue) < 0.01
-    }
-
-    // MARK: - Cooldown Section
-
-    private var cooldownSection: some View {
-        Section {
-            VStack(alignment: .leading, spacing: 16) {
-                // Slider with tickmarks
-                VStack(spacing: 8) {
-                    // Tickmarks
-                    HStack {
-                        ForEach(1...7, id: \.self) { day in
-                            Text("\(day)")
-                                .font(.caption2)
-                                .foregroundColor(Int(dataManager.settings.cooldownDays) == day ? dataManager.settings.highlightColor.color : .secondary)
-                                .frame(maxWidth: .infinity)
-                        }
-                    }
-
-                    // Slider
-                    Slider(
-                        value: Binding(
-                            get: { dataManager.settings.cooldownDays },
-                            set: { dataManager.updateCooldownDays($0) }
-                        ),
-                        in: 1...7,
-                        step: 1
-                    )
-                    .tint(dataManager.settings.highlightColor.color)
-                }
-
-                Text("Muscle groups will fade completely after \(cooldownText)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            .padding(.vertical, 4)
-        } header: {
-            Text("Cooldown Time")
-        } footer: {
-            Text("The highlight intensity will gradually decrease from 100% to 0% over this period.")
-        }
-    }
-
-    private var cooldownText: String {
-        let days = Int(dataManager.settings.cooldownDays)
-        return days == 1 ? "1 day" : "\(days) days"
     }
 
     // MARK: - iCloud Section
