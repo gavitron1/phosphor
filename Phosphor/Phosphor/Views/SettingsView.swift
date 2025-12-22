@@ -9,7 +9,6 @@ struct SettingsView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var cloudKitManager = CloudKitManager.shared
     @ObservedObject var notificationManager = NotificationManager.shared
-    @Environment(\.dismiss) private var dismiss
 
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
@@ -17,7 +16,7 @@ struct SettingsView: View {
     @State private var cooldownMode: CooldownMode = .days
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
+        NavigationStack {
             Form {
                 genderSection
 
@@ -35,20 +34,7 @@ struct SettingsView: View {
 
                 dangerZoneSection
             }
-            .padding(.top, 50)
-
-            // Back button
-            HStack {
-                GlassCircleButton(
-                    systemName: "chevron.left",
-                    color: dataManager.settings.highlightColor.color,
-                    action: { dismiss() }
-                )
-                .padding(.leading, 16)
-                .padding(.top, 8)
-
-                Spacer()
-            }
+            .navigationTitle("Settings")
         }
         .alert("Delete All Data", isPresented: $showDeleteConfirmation) {
             Button("Cancel", role: .cancel) { }

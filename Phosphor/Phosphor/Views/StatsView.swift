@@ -2,34 +2,22 @@ import SwiftUI
 
 struct StatsView: View {
     @ObservedObject var dataManager = DataManager.shared
-    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        ZStack(alignment: .topLeading) {
-            ScrollView {
-                VStack(spacing: 16) {
-                    summaryCard
+        ScrollView {
+            VStack(spacing: 16) {
+                Text("Statistics")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    statsListView
-                }
-                .padding()
-                .padding(.top, 50)
+                summaryCard
+
+                statsListView
             }
-            .background(Color(.systemGroupedBackground))
-
-            // Back button
-            HStack {
-                GlassCircleButton(
-                    systemName: "chevron.left",
-                    color: dataManager.settings.highlightColor.color,
-                    action: { dismiss() }
-                )
-                .padding(.leading, 16)
-                .padding(.top, 8)
-
-                Spacer()
-            }
+            .padding()
         }
+        .background(Color(.systemGroupedBackground))
     }
 
     // MARK: - Summary Card
