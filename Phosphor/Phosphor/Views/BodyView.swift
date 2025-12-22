@@ -98,7 +98,7 @@ struct BodyView: View {
 
                 Spacer()
 
-                // Bottom controls - integrated container
+                // Bottom controls - integrated container with concentric corners
                 HStack(spacing: 12) {
                     // History slider (reversed so today is on right)
                     Slider(
@@ -121,12 +121,13 @@ struct BodyView: View {
                             .frame(width: 44, height: 44)
                     }
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 12)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
                 .background(
-                    RoundedRectangle(cornerRadius: 22)
+                    // Corner radius ~39 (iPhone) - 16 (inset) = ~23, but using slightly larger for visual balance
+                    RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                        .shadow(color: .black.opacity(0.15), radius: 12, x: 0, y: 4)
                 )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
