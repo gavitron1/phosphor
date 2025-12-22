@@ -107,24 +107,23 @@ class CloudKitManager: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
-        let (results, _) = try await privateDatabase.records(matching: query)
-
         var muscleData: [MuscleGroupData] = []
 
-        for (_, result) in results {
-            if case .success(let record) = result {
-                if let muscleGroupName = record["muscleGroup"] as? String,
-                   let muscleGroup = MuscleGroup(rawValue: muscleGroupName) {
-                    let tapCount = record["tapCount"] as? Int ?? 0
-                    let lastTapped = record["lastTappedDate"] as? Date
+        // Fetch each muscle group record by known record ID
+        for muscleGroup in MuscleGroup.allCases {
+            let recordID = CKRecord.ID(recordName: muscleGroup.rawValue)
+            do {
+                let record = try await privateDatabase.record(for: recordID)
+                let tapCount = record["tapCount"] as? Int ?? 0
+                let lastTapped = record["lastTappedDate"] as? Date
 
-                    muscleData.append(MuscleGroupData(
-                        muscleGroup: muscleGroup,
-                        lastTappedDate: lastTapped,
-                        tapCount: tapCount
-                    ))
-                }
+                muscleData.append(MuscleGroupData(
+                    muscleGroup: muscleGroup,
+                    lastTappedDate: lastTapped,
+                    tapCount: tapCount
+                ))
+            } catch let error as CKError where error.code == .unknownItem {
+                // Record doesn't exist yet, skip it
             }
         }
 
@@ -165,12 +164,14 @@ class CloudKitManager: ObservableObject {
         isLoading = true
         defer { isLoading = false }
 
-        // Delete all muscle group records
-        let query = CKQuery(recordType: recordType, predicate: NSPredicate(value: true))
-        let (results, _) = try await privateDatabase.records(matching: query)
-
-        for (recordID, _) in results {
-            try await privateDatabase.deleteRecord(withID: recordID)
+        // Delete all muscle group records by known record IDs
+        for muscleGroup in MuscleGroup.allCases {
+            let recordID = CKRecord.ID(recordName: muscleGroup.rawValue)
+            do {
+                try await privateDatabase.deleteRecord(withID: recordID)
+            } catch let error as CKError where error.code == .unknownItem {
+                // Record doesn't exist, that's fine
+            }
         }
 
         // Delete settings

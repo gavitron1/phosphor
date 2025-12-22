@@ -148,6 +148,7 @@ struct TappableBodyView: View {
     let side: BodySide
     let highlightColor: Color
     let darkMode: Bool
+    let cooldownDays: Double  // Added to trigger re-render when cooldown changes
     let getIntensity: (MuscleGroup) -> Double
     let onMuscleGroupTapped: (MuscleGroup) -> Void
 
@@ -651,6 +652,7 @@ extension UIColor {
         side: .front,
         highlightColor: .orange,
         darkMode: false,
+        cooldownDays: 3,
         getIntensity: { _ in 0.5 },
         onMuscleGroupTapped: { _ in }
     )

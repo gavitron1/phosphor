@@ -72,6 +72,7 @@ struct BodyView: View {
                         side: currentSide,
                         highlightColor: dataManager.settings.highlightColor.color,
                         darkMode: dataManager.settings.darkMode,
+                        cooldownDays: dataManager.settings.cooldownDays,
                         getIntensity: { muscleGroup in
                             if isViewingHistory {
                                 return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
@@ -99,43 +100,28 @@ struct BodyView: View {
                     .frame(height: geometry.size.height - 8)
                 }
 
-                // Layer 2: Controls overlay - centered vertically
+                // Layer 2: Slider overlay - centered vertically on right side
                 HStack {
                     Spacer()
 
-                    // Right side: Swap button + Slider in VStack, centered
-                    VStack(spacing: 16) {
-                        // Swap front/back button
-                        GlassCircleButton(
-                            systemName: "arrow.trianglehead.2.clockwise",
-                            color: dataManager.settings.highlightColor.color,
-                            action: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    currentSide = currentSide == .front ? .back : .front
-                                }
+                    // Right side: Vertical centered slider (1/3 of screen height)
+                    CenteredVerticalSlider(
+                        value: $daysOffset,
+                        isDragging: $isDragging,
+                        range: -7...7,
+                        highlightColor: dataManager.settings.highlightColor.color,
+                        onValueChanged: { sliderDetentFeedback() },
+                        onRelease: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                daysOffset = 0
                             }
-                        )
-
-                        // Camera-zoom style slider (1/3 of screen height)
-                        CameraZoomSlider(
-                            value: $daysOffset,
-                            isDragging: $isDragging,
-                            range: -7...7,
-                            highlightColor: dataManager.settings.highlightColor.color,
-                            darkMode: dataManager.settings.darkMode,
-                            onValueChanged: { sliderDetentFeedback() },
-                            onRelease: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    daysOffset = 0
-                                }
-                            }
-                        )
-                        .frame(width: 50, height: geometry.size.height / 3)
-                    }
+                        }
+                    )
+                    .frame(width: 60, height: geometry.size.height / 3)
                     .padding(.trailing, 8)
                 }
 
-                // Layer 3: Top bar overlay (clock button + date label)
+                // Layer 3: Top bar overlay (clock button + date label + swap button)
                 VStack {
                     HStack {
                         // Clock button (top left)
@@ -163,9 +149,16 @@ struct BodyView: View {
 
                         Spacer()
 
-                        // Invisible spacer to balance layout
-                        Color.clear
-                            .frame(width: 44, height: 44)
+                        // Swap front/back button (top right)
+                        GlassCircleButton(
+                            systemName: "arrow.trianglehead.2.clockwise",
+                            color: dataManager.settings.highlightColor.color,
+                            action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    currentSide = currentSide == .front ? .back : .front
+                                }
+                            }
+                        )
                     }
                     .padding(.horizontal, 8)
                     .padding(.top, 8)
@@ -226,27 +219,20 @@ struct BodyView: View {
     }
 }
 
-// MARK: - Camera Zoom Style Slider
+// MARK: - Centered Vertical Slider
 
-struct CameraZoomSlider: View {
+struct CenteredVerticalSlider: View {
     @Binding var value: Double
     @Binding var isDragging: Bool
     let range: ClosedRange<Double>
     let highlightColor: Color
-    let darkMode: Bool
     let onValueChanged: () -> Void
     let onRelease: () -> Void
 
-    @State private var continuousDragValue: CGFloat = 0
     @State private var lastReportedIntValue: Double = 0
 
-    private let tickSpacing: CGFloat = 24
-    private let tickWidth: CGFloat = 16
-    private let tickHeight: CGFloat = 2
-
-    private var tickColor: Color {
-        darkMode ? Color.white.opacity(0.3) : Color.black.opacity(0.15)
-    }
+    private let trackWidth: CGFloat = 4
+    private let handleSize: CGFloat = 24
 
     private func dayLetter(for offset: Int) -> String {
         let calendar = Calendar.current
@@ -260,28 +246,31 @@ struct CameraZoomSlider: View {
         GeometryReader { geometry in
             let totalHeight = geometry.size.height
             let centerY = totalHeight / 2
-            let tickCount = Int(range.upperBound - range.lowerBound) + 1
+            let usableHeight = totalHeight - handleSize
+            let rangeSpan = range.upperBound - range.lowerBound
+
+            // Calculate handle position (up = future/positive, down = past/negative)
+            let normalizedValue = value / rangeSpan
+            let handleY = centerY - (CGFloat(normalizedValue) * usableHeight / 2)
 
             ZStack {
-                // Moving tick marks - use continuous value for smooth movement
-                ForEach(0..<tickCount, id: \.self) { index in
-                    let tickValue = range.lowerBound + Double(index)
-                    // Use continuous drag value for smooth tick movement
-                    let displayValue = isDragging ? continuousDragValue : value
-                    let offsetFromValue = tickValue - displayValue
-                    // Up = future (positive offset shows above center)
-                    let tickY = centerY - (CGFloat(offsetFromValue) * tickSpacing)
+                // Track background
+                RoundedRectangle(cornerRadius: trackWidth / 2)
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: trackWidth, height: totalHeight)
 
-                    // Only show ticks within visible range
-                    if tickY > -tickSpacing && tickY < totalHeight + tickSpacing {
-                        RoundedRectangle(cornerRadius: 1)
-                            .fill(tickColor)
-                            .frame(width: tickWidth, height: tickHeight)
-                            .position(x: geometry.size.width - tickWidth / 2 - 4, y: tickY)
-                    }
+                // Highlight fill from center
+                if value != 0 {
+                    let fillHeight = abs(CGFloat(normalizedValue) * usableHeight / 2)
+                    let fillY = value > 0 ? centerY - fillHeight / 2 : centerY + fillHeight / 2
+
+                    RoundedRectangle(cornerRadius: trackWidth / 2)
+                        .fill(highlightColor)
+                        .frame(width: trackWidth, height: fillHeight)
+                        .position(x: geometry.size.width / 2, y: fillY)
                 }
 
-                // Fixed indicator dot with day letter
+                // Handle with day letter
                 HStack(spacing: 6) {
                     // Day letter (visible when dragging)
                     Text(dayLetter(for: Int(value)))
@@ -290,12 +279,13 @@ struct CameraZoomSlider: View {
                         .opacity(isDragging ? 1 : 0)
                         .animation(.easeInOut(duration: 0.15), value: isDragging)
 
-                    // Fixed dot indicator
+                    // White handle
                     Circle()
-                        .fill(highlightColor)
-                        .frame(width: 8, height: 8)
+                        .fill(Color.white)
+                        .frame(width: handleSize, height: handleSize)
+                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
                 }
-                .position(x: geometry.size.width / 2 - 4, y: centerY)
+                .position(x: geometry.size.width / 2 - 10, y: handleY)
 
                 // Invisible drag area
                 Rectangle()
@@ -304,35 +294,28 @@ struct CameraZoomSlider: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { gesture in
-                                // Set dragging immediately on touch
                                 if !isDragging {
                                     isDragging = true
-                                    continuousDragValue = value
                                 }
 
                                 // Dragging up (negative translation) = future (positive value)
                                 // Dragging down (positive translation) = past (negative value)
                                 let dragDistance = -gesture.translation.height
-                                let valueChange = dragDistance / tickSpacing
+                                let valuePerPoint = rangeSpan / Double(usableHeight)
+                                let valueChange = dragDistance * valuePerPoint
 
-                                // Continuous value for smooth tick movement
-                                let newContinuousValue = max(range.lowerBound, min(valueChange, range.upperBound))
-                                continuousDragValue = newContinuousValue
+                                let newValue = max(range.lowerBound, min(valueChange, range.upperBound))
+                                let roundedValue = round(newValue)
 
-                                // Round to integer for actual value
-                                let roundedValue = round(newContinuousValue)
-                                let clampedValue = max(range.lowerBound, min(roundedValue, range.upperBound))
-
-                                if clampedValue != lastReportedIntValue {
-                                    lastReportedIntValue = clampedValue
-                                    value = clampedValue
+                                if roundedValue != lastReportedIntValue {
+                                    lastReportedIntValue = roundedValue
+                                    value = roundedValue
                                     onValueChanged()
                                 }
                             }
                             .onEnded { _ in
                                 isDragging = false
                                 lastReportedIntValue = 0
-                                continuousDragValue = 0
                                 onRelease()
                             }
                     )
@@ -342,8 +325,8 @@ struct CameraZoomSlider: View {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.15),
-                        .init(color: .black, location: 0.85),
+                        .init(color: .black, location: 0.1),
+                        .init(color: .black, location: 0.9),
                         .init(color: .clear, location: 1)
                     ],
                     startPoint: .top,
