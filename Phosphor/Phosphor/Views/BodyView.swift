@@ -265,7 +265,7 @@ struct VerticalTickSlider: View {
                         // Day letter (only visible when dragging)
                         Text(dayLetter(for: Int(tickValue)))
                             .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isSelected ? highlightColor : (darkMode ? .white : .black).opacity(0.5))
+                            .foregroundColor(isSelected ? highlightColor : Color(darkMode ? .white : .black).opacity(0.5))
                             .opacity(isDragging ? 1 : 0)
                             .animation(.easeInOut(duration: 0.15), value: isDragging)
 
