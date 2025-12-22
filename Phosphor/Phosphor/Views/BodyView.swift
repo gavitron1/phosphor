@@ -18,7 +18,6 @@ struct BodyView: View {
     }
 
     private var endOfDayDate: Date {
-        // Get end of the selected day (23:59:59)
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: selectedDate)
         return calendar.date(byAdding: .second, value: 86399, to: startOfDay) ?? selectedDate
@@ -43,7 +42,6 @@ struct BodyView: View {
     }
 
     private var hasDataForSelectedDate: Bool {
-        // Check if any muscle group has intensity > 0 for the selected date
         for group in MuscleGroup.allCases {
             if dataManager.getIntensity(for: group, asOf: endOfDayDate) > 0 {
                 return true
@@ -59,75 +57,98 @@ struct BodyView: View {
                 Color(.systemGroupedBackground)
                     .ignoresSafeArea()
 
-                HStack(spacing: 0) {
-                    // Main content area
-                    ZStack {
-                        if daysOffset < 0 && !hasDataForSelectedDate {
-                            // No data message (only for past dates)
-                            VStack(spacing: 8) {
-                                Text("No Data")
-                                    .font(.title2)
-                                    .fontWeight(.semibold)
-                                    .foregroundColor(.secondary)
-                            }
-                        } else {
-                            // Body image view - 64pt taller, anchored to top
-                            VStack(spacing: 0) {
-                                TappableBodyView(
-                                    gender: dataManager.settings.gender,
-                                    side: currentSide,
-                                    highlightColor: dataManager.settings.highlightColor.color,
-                                    darkMode: dataManager.settings.darkMode,
-                                    getIntensity: { muscleGroup in
-                                        if isViewingHistory {
-                                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
-                                        } else {
-                                            return dataManager.getIntensity(for: muscleGroup)
-                                        }
-                                    },
-                                    onMuscleGroupTapped: { muscleGroup in
-                                        // Only allow tapping when viewing today
-                                        if !isViewingHistory {
-                                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                                            if wasRecorded {
-                                                hapticFeedbackTap()
-                                                showMuscleFeedback(muscleGroup.rawValue)
-                                                // Schedule cooldown notifications
-                                                notificationManager.scheduleCooldownNotifications(
-                                                    muscleData: dataManager.muscleGroupData,
-                                                    cooldownDays: dataManager.settings.cooldownDays
-                                                )
-                                            } else {
-                                                hapticFeedbackUndo()
-                                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
-                                            }
-                                        }
-                                    }
-                                )
-                                .frame(height: geometry.size.height + 64)
-
-                                Spacer(minLength: 0)
-                            }
-                        }
+                // Layer 1: Body view - centered, 16pt smaller
+                if daysOffset < 0 && !hasDataForSelectedDate {
+                    VStack(spacing: 8) {
+                        Text("No Data")
+                            .font(.title2)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
                     }
-                    .frame(maxWidth: .infinity)
-
-                    // Vertical tick slider on right side
-                    VerticalTickSlider(
-                        value: $daysOffset,
-                        isDragging: $isDragging,
-                        range: -7...7,
+                } else {
+                    TappableBodyView(
+                        gender: dataManager.settings.gender,
+                        side: currentSide,
                         highlightColor: dataManager.settings.highlightColor.color,
                         darkMode: dataManager.settings.darkMode,
-                        onValueChanged: { sliderDetentFeedback() },
-                        onRelease: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                daysOffset = 0
+                        getIntensity: { muscleGroup in
+                            if isViewingHistory {
+                                return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                            } else {
+                                return dataManager.getIntensity(for: muscleGroup)
+                            }
+                        },
+                        onMuscleGroupTapped: { muscleGroup in
+                            if !isViewingHistory {
+                                let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
+                                if wasRecorded {
+                                    hapticFeedbackTap()
+                                    showMuscleFeedback(muscleGroup.rawValue)
+                                    notificationManager.scheduleCooldownNotifications(
+                                        muscleData: dataManager.muscleGroupData,
+                                        cooldownDays: dataManager.settings.cooldownDays
+                                    )
+                                } else {
+                                    hapticFeedbackUndo()
+                                    showMuscleFeedback("\(muscleGroup.rawValue) Removed")
+                                }
                             }
                         }
                     )
-                    .frame(width: 44)
+                    .frame(height: geometry.size.height - 16)
+                }
+
+                // Layer 2: Controls overlay
+                HStack {
+                    Spacer()
+
+                    // Right side: Swap button + Slider in VStack
+                    VStack(spacing: 16) {
+                        // Swap front/back button
+                        GlassCircleButton(
+                            systemName: "arrow.trianglehead.2.clockwise",
+                            color: dataManager.settings.highlightColor.color,
+                            action: {
+                                withAnimation(.easeInOut(duration: 0.2)) {
+                                    currentSide = currentSide == .front ? .back : .front
+                                }
+                            }
+                        )
+
+                        // Camera-zoom style slider (1/3 of screen height)
+                        CameraZoomSlider(
+                            value: $daysOffset,
+                            isDragging: $isDragging,
+                            range: -7...7,
+                            highlightColor: dataManager.settings.highlightColor.color,
+                            darkMode: dataManager.settings.darkMode,
+                            onValueChanged: { sliderDetentFeedback() },
+                            onRelease: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    daysOffset = 0
+                                }
+                            }
+                        )
+                        .frame(width: 50, height: geometry.size.height / 3)
+
+                        Spacer()
+                    }
                     .padding(.trailing, 8)
+                    .padding(.top, 8)
+                }
+
+                // Layer 3: Date label overlay
+                VStack {
+                    Text(showFeedback ? feedbackText : dateText)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(showFeedback ? dataManager.settings.highlightColor.color : (isViewingHistory ? dataManager.settings.highlightColor.color : .primary))
+                        .padding(.top, 18)
+                        .allowsHitTesting(false)
+                        .animation(.easeInOut(duration: 0.3), value: showFeedback)
+                        .id(showFeedback ? feedbackText : "date")
+
+                    Spacer()
                 }
             }
         }
@@ -137,57 +158,26 @@ struct BodyView: View {
                     let horizontalDistance = gesture.translation.width
                     let verticalDistance = abs(gesture.translation.height)
 
-                    // Only trigger if horizontal movement is greater than vertical
                     if abs(horizontalDistance) > verticalDistance {
                         withAnimation(.easeInOut(duration: 0.2)) {
                             currentSide = currentSide == .front ? .back : .front
                         }
-                        // Haptic feedback for swipe
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
                     }
                 }
         )
-        .overlay(alignment: .topTrailing) {
-            // Swap front/back button (top right)
-            GlassCircleButton(
-                systemName: "arrow.trianglehead.2.clockwise",
-                color: dataManager.settings.highlightColor.color,
-                action: {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        currentSide = currentSide == .front ? .back : .front
-                    }
-                }
-            )
-            .padding(.trailing, 60)
-            .padding(.top, 8)
-        }
-        .overlay(alignment: .top) {
-            // Date/feedback display (center top)
-            Text(showFeedback ? feedbackText : dateText)
-                .font(.headline)
-                .fontWeight(.semibold)
-                .foregroundColor(showFeedback ? dataManager.settings.highlightColor.color : (isViewingHistory ? dataManager.settings.highlightColor.color : .primary))
-                .padding(.top, 18)
-                .allowsHitTesting(false)
-                .animation(.easeInOut(duration: 0.3), value: showFeedback)
-                .id(showFeedback ? feedbackText : "date") // Force view recreation for animation
-        }
     }
 
     private func showMuscleFeedback(_ text: String) {
-        // Cancel any existing fade-out task
         feedbackTask?.cancel()
-
-        // Show the feedback
         feedbackText = text
         withAnimation(.easeIn(duration: 0.2)) {
             showFeedback = true
         }
 
-        // Schedule fade-out after 4 seconds
         feedbackTask = Task {
-            try? await Task.sleep(nanoseconds: 4_000_000_000) // 4 seconds
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
             if !Task.isCancelled {
                 await MainActor.run {
                     withAnimation(.easeOut(duration: 0.3)) {
@@ -214,9 +204,9 @@ struct BodyView: View {
     }
 }
 
-// MARK: - Vertical Tick Slider
+// MARK: - Camera Zoom Style Slider
 
-struct VerticalTickSlider: View {
+struct CameraZoomSlider: View {
     @Binding var value: Double
     @Binding var isDragging: Bool
     let range: ClosedRange<Double>
@@ -225,58 +215,65 @@ struct VerticalTickSlider: View {
     let onValueChanged: () -> Void
     let onRelease: () -> Void
 
+    @State private var dragOffset: CGFloat = 0
     @State private var lastReportedValue: Double = 0
 
-    private let tickWidth: CGFloat = 20
+    private let tickSpacing: CGFloat = 24
+    private let tickWidth: CGFloat = 16
     private let tickHeight: CGFloat = 2
-    private let tickSpacing: CGFloat = 20
 
     private var tickColor: Color {
         darkMode ? Color.white.opacity(0.3) : Color.black.opacity(0.15)
     }
 
-    // Get day letter for a given offset from today
     private func dayLetter(for offset: Int) -> String {
         let calendar = Calendar.current
         let date = calendar.date(byAdding: .day, value: offset, to: Date()) ?? Date()
         let formatter = DateFormatter()
-        formatter.dateFormat = "EEEEE" // Single letter day
+        formatter.dateFormat = "EEEEE"
         return formatter.string(from: date)
     }
 
     var body: some View {
         GeometryReader { geometry in
             let totalHeight = geometry.size.height
-            let tickCount = Int(range.upperBound - range.lowerBound) + 1
-            let usableHeight = totalHeight - 60 // Padding for fade
             let centerY = totalHeight / 2
+            let tickCount = Int(range.upperBound - range.lowerBound) + 1
 
             ZStack {
-                // Tick marks with day letters
+                // Moving tick marks
                 ForEach(0..<tickCount, id: \.self) { index in
                     let tickValue = range.lowerBound + Double(index)
-                    let normalizedPosition = Double(index) / Double(tickCount - 1)
-                    // Invert: top = future (+7), bottom = past (-7)
-                    let tickY = 30 + (1 - normalizedPosition) * usableHeight
-                    let isSelected = Int(value) == Int(tickValue)
-                    let distanceFromSelected = abs(Int(tickValue) - Int(value))
+                    // Position relative to current value
+                    // When value = tickValue, tick should be at center
+                    let offsetFromValue = tickValue - value
+                    // Up = future (positive offset shows above center)
+                    let tickY = centerY - (CGFloat(offsetFromValue) * tickSpacing)
 
-                    HStack(spacing: 4) {
-                        // Day letter (only visible when dragging)
-                        Text(dayLetter(for: Int(tickValue)))
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isSelected ? highlightColor : Color(darkMode ? .white : .black).opacity(0.5))
-                            .opacity(isDragging ? 1 : 0)
-                            .animation(.easeInOut(duration: 0.15), value: isDragging)
-
-                        // Tick mark
+                    // Only show ticks within visible range
+                    if tickY > -tickSpacing && tickY < totalHeight + tickSpacing {
                         RoundedRectangle(cornerRadius: 1)
-                            .fill(isSelected ? highlightColor : tickColor)
-                            .frame(width: isSelected ? tickWidth : tickWidth * 0.6, height: tickHeight)
-                            .animation(.easeInOut(duration: 0.1), value: isSelected)
+                            .fill(tickColor)
+                            .frame(width: tickWidth, height: tickHeight)
+                            .position(x: geometry.size.width - tickWidth / 2 - 4, y: tickY)
                     }
-                    .position(x: geometry.size.width / 2 - 2, y: tickY)
                 }
+
+                // Fixed indicator dot with day letter
+                HStack(spacing: 6) {
+                    // Day letter (only visible when dragging)
+                    Text(dayLetter(for: Int(value)))
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(highlightColor)
+                        .opacity(isDragging ? 1 : 0)
+                        .animation(.easeInOut(duration: 0.15), value: isDragging)
+
+                    // Fixed dot indicator
+                    Circle()
+                        .fill(highlightColor)
+                        .frame(width: 8, height: 8)
+                }
+                .position(x: geometry.size.width / 2 - 4, y: centerY)
 
                 // Invisible drag area
                 Rectangle()
@@ -286,16 +283,13 @@ struct VerticalTickSlider: View {
                         DragGesture(minimumDistance: 0)
                             .onChanged { gesture in
                                 isDragging = true
-                                let y = gesture.location.y
-                                // Clamp to usable area
-                                let clampedY = max(30, min(y, 30 + usableHeight))
-                                // Invert: top = future, bottom = past
-                                let percent = 1 - (clampedY - 30) / usableHeight
-                                let newValue = range.lowerBound + (range.upperBound - range.lowerBound) * percent
+                                // Dragging up (negative translation) = future (positive value)
+                                // Dragging down (positive translation) = past (negative value)
+                                let dragDistance = -gesture.translation.height
+                                let valueChange = dragDistance / tickSpacing
 
-                                // Round to nearest integer
-                                let roundedValue = round(newValue)
-                                let clampedValue = max(range.lowerBound, min(roundedValue, range.upperBound))
+                                let newValue = round(valueChange)
+                                let clampedValue = max(range.lowerBound, min(newValue, range.upperBound))
 
                                 if clampedValue != lastReportedValue {
                                     lastReportedValue = clampedValue
@@ -305,6 +299,7 @@ struct VerticalTickSlider: View {
                             }
                             .onEnded { _ in
                                 isDragging = false
+                                lastReportedValue = 0
                                 onRelease()
                             }
                     )
@@ -314,8 +309,8 @@ struct VerticalTickSlider: View {
                 LinearGradient(
                     stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .black, location: 0.1),
-                        .init(color: .black, location: 0.9),
+                        .init(color: .black, location: 0.15),
+                        .init(color: .black, location: 0.85),
                         .init(color: .clear, location: 1)
                     ],
                     startPoint: .top,
