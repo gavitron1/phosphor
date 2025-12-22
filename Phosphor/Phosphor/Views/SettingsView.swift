@@ -66,10 +66,15 @@ struct SettingsView: View {
 
     private var appearanceSection: some View {
         Section {
-            Toggle("Dark Mode", isOn: Binding(
-                get: { dataManager.settings.darkMode },
-                set: { dataManager.updateDarkMode($0) }
-            ))
+            Picker("Mode", selection: Binding(
+                get: { dataManager.settings.appearanceMode },
+                set: { dataManager.updateAppearanceMode($0) }
+            )) {
+                ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                    Text(mode.rawValue).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
 
             // Color picker grid
             LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 12) {

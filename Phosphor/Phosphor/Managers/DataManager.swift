@@ -154,8 +154,8 @@ class DataManager: ObservableObject {
         }
     }
 
-    func updateDarkMode(_ enabled: Bool) {
-        settings.darkMode = enabled
+    func updateAppearanceMode(_ mode: AppearanceMode) {
+        settings.appearanceMode = mode
         saveLocalData()
 
         Task {

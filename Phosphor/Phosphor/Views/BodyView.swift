@@ -3,6 +3,7 @@ import SwiftUI
 struct BodyView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var notificationManager = NotificationManager.shared
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var currentSide: BodySide = .front
     @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
@@ -13,6 +14,18 @@ struct BodyView: View {
     @State private var feedbackText: String = ""
     @State private var showFeedback: Bool = false
     @State private var feedbackTask: Task<Void, Never>?
+
+    // Effective dark mode based on appearance setting and system color scheme
+    private var effectiveDarkMode: Bool {
+        switch dataManager.settings.appearanceMode {
+        case .dark:
+            return true
+        case .light:
+            return false
+        case .system:
+            return colorScheme == .dark
+        }
+    }
 
     private var selectedDate: Date {
         Calendar.current.date(byAdding: .day, value: Int(daysOffset), to: Date()) ?? Date()
@@ -71,7 +84,7 @@ struct BodyView: View {
                         gender: dataManager.settings.gender,
                         side: currentSide,
                         highlightColor: dataManager.settings.highlightColor.color,
-                        darkMode: dataManager.settings.darkMode,
+                        darkMode: effectiveDarkMode,
                         cooldownDays: dataManager.settings.cooldownDays,
                         getIntensity: { muscleGroup in
                             if isViewingHistory {
@@ -97,7 +110,7 @@ struct BodyView: View {
                             }
                         }
                     )
-                    .frame(height: geometry.size.height - 8)
+                    .frame(height: geometry.size.height + 8)
                 }
 
                 // Layer 2: Slider overlay - centered vertically on right side
