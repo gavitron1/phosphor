@@ -52,8 +52,8 @@ struct BodyView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
-            if isViewingHistory && !hasDataForSelectedDate {
-                // No data message
+            if daysOffset < 0 && !hasDataForSelectedDate {
+                // No data message (only for past dates)
                 VStack(spacing: 8) {
                     Text("No Data")
                         .font(.title2)
@@ -94,39 +94,20 @@ struct BodyView: View {
                 .allowsHitTesting(!isViewingHistory)
             }
 
-            // Top navigation
+            // Top navigation - date display only
             VStack {
-                HStack {
-                    Spacer()
-
-                    // Date display (center)
-                    Text(dateText)
-                        .font(.headline)
-                        .fontWeight(.semibold)
-                        .foregroundColor(isViewingHistory ? dataManager.settings.highlightColor.color : .primary)
-
-                    Spacer()
-
-                    // Swap front/back button (top right)
-                    GlassCircleButton(
-                        systemName: "arrow.left.arrow.right",
-                        color: dataManager.settings.highlightColor.color,
-                        action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                currentSide = currentSide == .front ? .back : .front
-                            }
-                        }
-                    )
-                }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                Text(dateText)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(isViewingHistory ? dataManager.settings.highlightColor.color : .primary)
+                    .padding(.top, 8)
 
                 Spacer()
             }
         }
         .safeAreaInset(edge: .bottom) {
-            // History slider - full width above tab bar
-            VStack(spacing: 0) {
+            // Bottom controls - slider and swap button
+            HStack(spacing: 12) {
                 Slider(
                     value: $daysOffset,
                     in: -7...7,
@@ -146,11 +127,20 @@ struct BodyView: View {
                         sliderDetentFeedback()
                     }
                 }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 12)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
+
+                // Swap front/back button
+                GlassCircleButton(
+                    systemName: "arrow.trianglehead.2.clockwise",
+                    color: dataManager.settings.highlightColor.color,
+                    action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            currentSide = currentSide == .front ? .back : .front
+                        }
+                    }
+                )
             }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 8)
         }
     }
 
