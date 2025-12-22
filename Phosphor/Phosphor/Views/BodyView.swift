@@ -94,36 +94,28 @@ struct BodyView: View {
                 )
             }
         }
-        .overlay(alignment: .top) {
-            // Top navigation bar - date and swap button
-            HStack {
-                // Swap front/back button (left side)
-                GlassCircleButton(
-                    systemName: "arrow.trianglehead.2.clockwise",
-                    color: dataManager.settings.highlightColor.color,
-                    action: {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            currentSide = currentSide == .front ? .back : .front
-                        }
+        .overlay(alignment: .topLeading) {
+            // Swap front/back button (top left)
+            GlassCircleButton(
+                systemName: "arrow.trianglehead.2.clockwise",
+                color: dataManager.settings.highlightColor.color,
+                action: {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        currentSide = currentSide == .front ? .back : .front
                     }
-                )
-
-                Spacer()
-
-                // Date display (center)
-                Text(dateText)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(isViewingHistory ? dataManager.settings.highlightColor.color : .primary)
-
-                Spacer()
-
-                // Invisible spacer to balance the layout
-                Color.clear
-                    .frame(width: 44, height: 44)
-            }
-            .padding(.horizontal, 16)
+                }
+            )
+            .padding(.leading, 16)
             .padding(.top, 8)
+        }
+        .overlay(alignment: .top) {
+            // Date display (center top)
+            Text(dateText)
+                .font(.headline)
+                .fontWeight(.semibold)
+                .foregroundColor(isViewingHistory ? dataManager.settings.highlightColor.color : .primary)
+                .padding(.top, 18)
+                .allowsHitTesting(false)
         }
         .safeAreaInset(edge: .bottom) {
             // Custom centered slider
