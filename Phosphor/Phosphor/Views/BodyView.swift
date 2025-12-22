@@ -53,52 +53,82 @@ struct BodyView: View {
     }
 
     var body: some View {
-        ZStack {
-            // Background
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
+        GeometryReader { geometry in
+            ZStack {
+                // Background
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
 
-            if daysOffset < 0 && !hasDataForSelectedDate {
-                // No data message (only for past dates)
-                VStack(spacing: 8) {
-                    Text("No Data")
-                        .font(.title2)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.secondary)
-                }
-            } else {
-                // Body image view - fills safe area
-                TappableBodyView(
-                    gender: dataManager.settings.gender,
-                    side: currentSide,
-                    highlightColor: dataManager.settings.highlightColor.color,
-                    darkMode: dataManager.settings.darkMode,
-                    getIntensity: { muscleGroup in
-                        if isViewingHistory {
-                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                HStack(spacing: 0) {
+                    // Main content area
+                    ZStack {
+                        if daysOffset < 0 && !hasDataForSelectedDate {
+                            // No data message (only for past dates)
+                            VStack(spacing: 8) {
+                                Text("No Data")
+                                    .font(.title2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.secondary)
+                            }
                         } else {
-                            return dataManager.getIntensity(for: muscleGroup)
-                        }
-                    },
-                    onMuscleGroupTapped: { muscleGroup in
-                        // Only allow tapping when viewing today
-                        if !isViewingHistory {
-                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                            if wasRecorded {
-                                hapticFeedbackTap()
-                                showMuscleFeedback(muscleGroup.rawValue)
-                                // Schedule cooldown notifications
-                                notificationManager.scheduleCooldownNotifications(
-                                    muscleData: dataManager.muscleGroupData,
-                                    cooldownDays: dataManager.settings.cooldownDays
+                            // Body image view - 64pt taller, anchored to top
+                            VStack(spacing: 0) {
+                                TappableBodyView(
+                                    gender: dataManager.settings.gender,
+                                    side: currentSide,
+                                    highlightColor: dataManager.settings.highlightColor.color,
+                                    darkMode: dataManager.settings.darkMode,
+                                    getIntensity: { muscleGroup in
+                                        if isViewingHistory {
+                                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                                        } else {
+                                            return dataManager.getIntensity(for: muscleGroup)
+                                        }
+                                    },
+                                    onMuscleGroupTapped: { muscleGroup in
+                                        // Only allow tapping when viewing today
+                                        if !isViewingHistory {
+                                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
+                                            if wasRecorded {
+                                                hapticFeedbackTap()
+                                                showMuscleFeedback(muscleGroup.rawValue)
+                                                // Schedule cooldown notifications
+                                                notificationManager.scheduleCooldownNotifications(
+                                                    muscleData: dataManager.muscleGroupData,
+                                                    cooldownDays: dataManager.settings.cooldownDays
+                                                )
+                                            } else {
+                                                hapticFeedbackUndo()
+                                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
+                                            }
+                                        }
+                                    }
                                 )
-                            } else {
-                                hapticFeedbackUndo()
-                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
+                                .frame(height: geometry.size.height + 64)
+
+                                Spacer(minLength: 0)
                             }
                         }
                     }
-                )
+                    .frame(maxWidth: .infinity)
+
+                    // Vertical tick slider on right side
+                    VerticalTickSlider(
+                        value: $daysOffset,
+                        isDragging: $isDragging,
+                        range: -7...7,
+                        highlightColor: dataManager.settings.highlightColor.color,
+                        darkMode: dataManager.settings.darkMode,
+                        onValueChanged: { sliderDetentFeedback() },
+                        onRelease: {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                daysOffset = 0
+                            }
+                        }
+                    )
+                    .frame(width: 44)
+                    .padding(.trailing, 8)
+                }
             }
         }
         .gesture(
@@ -129,7 +159,7 @@ struct BodyView: View {
                     }
                 }
             )
-            .padding(.trailing, 16)
+            .padding(.trailing, 60)
             .padding(.top, 8)
         }
         .overlay(alignment: .top) {
@@ -142,24 +172,6 @@ struct BodyView: View {
                 .allowsHitTesting(false)
                 .animation(.easeInOut(duration: 0.3), value: showFeedback)
                 .id(showFeedback ? feedbackText : "date") // Force view recreation for animation
-        }
-        .safeAreaInset(edge: .bottom) {
-            // Custom centered slider
-            CenteredSlider(
-                value: $daysOffset,
-                isDragging: $isDragging,
-                range: -7...7,
-                highlightColor: dataManager.settings.highlightColor.color,
-                darkMode: dataManager.settings.darkMode,
-                onValueChanged: { sliderDetentFeedback() },
-                onRelease: {
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        daysOffset = 0
-                    }
-                }
-            )
-            .padding(.horizontal, 32)
-            .padding(.bottom, 16)
         }
     }
 
@@ -202,9 +214,9 @@ struct BodyView: View {
     }
 }
 
-// MARK: - Centered Slider
+// MARK: - Vertical Tick Slider
 
-struct CenteredSlider: View {
+struct VerticalTickSlider: View {
     @Binding var value: Double
     @Binding var isDragging: Bool
     let range: ClosedRange<Double>
@@ -215,72 +227,102 @@ struct CenteredSlider: View {
 
     @State private var lastReportedValue: Double = 0
 
-    private let trackHeight: CGFloat = 6
-    private let thumbSize: CGFloat = 28
+    private let tickWidth: CGFloat = 20
+    private let tickHeight: CGFloat = 2
+    private let tickSpacing: CGFloat = 20
 
-    private var trackColor: Color {
-        darkMode ? Color.white.opacity(0.2) : Color.black.opacity(0.1)
+    private var tickColor: Color {
+        darkMode ? Color.white.opacity(0.3) : Color.black.opacity(0.15)
+    }
+
+    // Get day letter for a given offset from today
+    private func dayLetter(for offset: Int) -> String {
+        let calendar = Calendar.current
+        let date = calendar.date(byAdding: .day, value: offset, to: Date()) ?? Date()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEEE" // Single letter day
+        return formatter.string(from: date)
     }
 
     var body: some View {
         GeometryReader { geometry in
-            let totalWidth = geometry.size.width
-            let usableWidth = totalWidth - thumbSize
-            let centerX = totalWidth / 2
-            let rangeSpan = range.upperBound - range.lowerBound
-            let valuePercent = (value - range.lowerBound) / rangeSpan
-            let thumbX = thumbSize / 2 + usableWidth * valuePercent
+            let totalHeight = geometry.size.height
+            let tickCount = Int(range.upperBound - range.lowerBound) + 1
+            let usableHeight = totalHeight - 60 // Padding for fade
+            let centerY = totalHeight / 2
 
-            ZStack(alignment: .leading) {
-                // Track background
-                Capsule()
-                    .fill(trackColor)
-                    .frame(height: trackHeight)
+            ZStack {
+                // Tick marks with day letters
+                ForEach(0..<tickCount, id: \.self) { index in
+                    let tickValue = range.lowerBound + Double(index)
+                    let normalizedPosition = Double(index) / Double(tickCount - 1)
+                    // Invert: top = future (+7), bottom = past (-7)
+                    let tickY = 30 + (1 - normalizedPosition) * usableHeight
+                    let isSelected = Int(value) == Int(tickValue)
+                    let distanceFromSelected = abs(Int(tickValue) - Int(value))
 
-                // Highlight fill from center
-                let fillWidth = abs(thumbX - centerX)
-                let fillX = value >= 0 ? centerX : thumbX
+                    HStack(spacing: 4) {
+                        // Day letter (only visible when dragging)
+                        Text(dayLetter(for: Int(tickValue)))
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(isSelected ? highlightColor : (darkMode ? .white : .black).opacity(0.5))
+                            .opacity(isDragging ? 1 : 0)
+                            .animation(.easeInOut(duration: 0.15), value: isDragging)
 
-                Capsule()
-                    .fill(highlightColor)
-                    .frame(width: fillWidth, height: trackHeight)
-                    .position(x: fillX + fillWidth / 2, y: geometry.size.height / 2)
+                        // Tick mark
+                        RoundedRectangle(cornerRadius: 1)
+                            .fill(isSelected ? highlightColor : tickColor)
+                            .frame(width: isSelected ? tickWidth : tickWidth * 0.6, height: tickHeight)
+                            .animation(.easeInOut(duration: 0.1), value: isSelected)
+                    }
+                    .position(x: geometry.size.width / 2 - 2, y: tickY)
+                }
 
-                // Thumb
-                Circle()
-                    .fill(Color.white)
-                    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                    .frame(width: thumbSize, height: thumbSize)
-                    .position(x: thumbX, y: geometry.size.height / 2)
+                // Invisible drag area
+                Rectangle()
+                    .fill(Color.clear)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { gesture in
+                                isDragging = true
+                                let y = gesture.location.y
+                                // Clamp to usable area
+                                let clampedY = max(30, min(y, 30 + usableHeight))
+                                // Invert: top = future, bottom = past
+                                let percent = 1 - (clampedY - 30) / usableHeight
+                                let newValue = range.lowerBound + (range.upperBound - range.lowerBound) * percent
+
+                                // Round to nearest integer
+                                let roundedValue = round(newValue)
+                                let clampedValue = max(range.lowerBound, min(roundedValue, range.upperBound))
+
+                                if clampedValue != lastReportedValue {
+                                    lastReportedValue = clampedValue
+                                    value = clampedValue
+                                    onValueChanged()
+                                }
+                            }
+                            .onEnded { _ in
+                                isDragging = false
+                                onRelease()
+                            }
+                    )
             }
-            .frame(height: geometry.size.height)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { gesture in
-                        isDragging = true
-                        let newX = gesture.location.x
-                        let clampedX = max(thumbSize / 2, min(newX, totalWidth - thumbSize / 2))
-                        let percent = (clampedX - thumbSize / 2) / usableWidth
-                        let newValue = range.lowerBound + rangeSpan * percent
-
-                        // Round to nearest integer for detent feel
-                        let roundedValue = round(newValue)
-                        let clampedValue = max(range.lowerBound, min(roundedValue, range.upperBound))
-
-                        if clampedValue != lastReportedValue {
-                            lastReportedValue = clampedValue
-                            value = clampedValue
-                            onValueChanged()
-                        }
-                    }
-                    .onEnded { _ in
-                        isDragging = false
-                        onRelease()
-                    }
+            // Fade mask for top and bottom
+            .mask(
+                LinearGradient(
+                    stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.1),
+                        .init(color: .black, location: 0.9),
+                        .init(color: .clear, location: 1)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             )
         }
-        .frame(height: thumbSize + 16)
     }
 }
 

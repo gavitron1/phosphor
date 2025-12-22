@@ -239,6 +239,7 @@ struct TappableBodyView: View {
                 loadMuscleImages()
             }
             .onChange(of: geometry.size) { _, newSize in viewSize = newSize }
+            .onChange(of: side) { _, _ in loadMuscleImages() }
         }
     }
 
