@@ -15,6 +15,9 @@ struct BodyView: View {
     @State private var showFeedback: Bool = false
     @State private var feedbackTask: Task<Void, Never>?
 
+    // Scroll tracking
+    @State private var scrollOffset: CGFloat = 0
+
     // Effective dark mode based on appearance setting and system color scheme
     private var effectiveDarkMode: Bool {
         switch dataManager.settings.appearanceMode {
@@ -95,6 +98,15 @@ struct BodyView: View {
                 // Scrollable content
                 ScrollView {
                     VStack(spacing: 0) {
+                        // Scroll offset tracker
+                        GeometryReader { proxy in
+                            Color.clear
+                                .preference(
+                                    key: ScrollOffsetPreferenceKey.self,
+                                    value: proxy.frame(in: .named("scroll")).minY
+                                )
+                        }
+                        .frame(height: 0)
                         // Body avatar section (screen height)
                         ZStack {
                             if daysOffset < 0 && !hasDataForSelectedDate {
@@ -209,33 +221,39 @@ struct BodyView: View {
                             .padding()
                             .background(
                                 RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.systemBackground))
-                                    .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+                                    .fill(Color(.secondarySystemBackground))
                             )
                         }
                         .padding()
                     }
                 }
+                .coordinateSpace(name: "scroll")
+                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    scrollOffset = value
+                }
 
-                // Layer 2: Slider overlay - centered vertically on right side
-                HStack {
-                    Spacer()
+                // Layer 2: Slider overlay - hide when scrolled down
+                if scrollOffset >= -50 {
+                    HStack {
+                        Spacer()
 
-                    // Right side: Vertical centered slider (1/3 of screen height)
-                    CenteredVerticalSlider(
-                        value: $daysOffset,
-                        isDragging: $isDragging,
-                        range: -7...7,
-                        highlightColor: dataManager.settings.highlightColor.color,
-                        onValueChanged: { sliderDetentFeedback() },
-                        onRelease: {
-                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                daysOffset = 0
+                        // Right side: Vertical centered slider (1/3 of screen height)
+                        CenteredVerticalSlider(
+                            value: $daysOffset,
+                            isDragging: $isDragging,
+                            range: -7...7,
+                            highlightColor: dataManager.settings.highlightColor.color,
+                            onValueChanged: { sliderDetentFeedback() },
+                            onRelease: {
+                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                    daysOffset = 0
+                                }
                             }
-                        }
-                    )
-                    .frame(width: 60, height: geometry.size.height / 3)
-                    .padding(.trailing, 8)
+                        )
+                        .frame(width: 60, height: geometry.size.height / 3)
+                        .padding(.trailing, 8)
+                    }
+                    .transition(.opacity)
                 }
 
                 // Layer 3: Top bar overlay (clock button + date label + swap button)
@@ -555,8 +573,7 @@ struct StatBox: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color(.systemBackground))
-                .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                .fill(Color(.secondarySystemBackground))
         )
     }
 }
@@ -616,6 +633,15 @@ struct MuscleStatRow: View {
         guard maxCount > 0 else { return 0 }
         let percentage = CGFloat(data.tapCount) / CGFloat(maxCount)
         return totalWidth * percentage
+    }
+}
+
+// MARK: - Scroll Offset Preference Key
+
+struct ScrollOffsetPreferenceKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }
 
