@@ -79,6 +79,15 @@ struct UserSettings: Codable {
         }
     }
 
+    // Custom encoding (only encode stored properties)
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(highlightColor, forKey: .highlightColor)
+        try container.encode(cooldownDays, forKey: .cooldownDays)
+        try container.encode(gender, forKey: .gender)
+        try container.encode(appearanceMode, forKey: .appearanceMode)
+    }
+
     private enum CodingKeys: String, CodingKey {
         case highlightColor, cooldownDays, gender, appearanceMode, darkMode
     }
