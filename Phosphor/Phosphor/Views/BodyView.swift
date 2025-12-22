@@ -101,6 +101,23 @@ struct BodyView: View {
                 )
             }
         }
+        .gesture(
+            DragGesture(minimumDistance: 50)
+                .onEnded { gesture in
+                    let horizontalDistance = gesture.translation.width
+                    let verticalDistance = abs(gesture.translation.height)
+
+                    // Only trigger if horizontal movement is greater than vertical
+                    if abs(horizontalDistance) > verticalDistance {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            currentSide = currentSide == .front ? .back : .front
+                        }
+                        // Haptic feedback for swipe
+                        let generator = UIImpactFeedbackGenerator(style: .light)
+                        generator.impactOccurred()
+                    }
+                }
+        )
         .overlay(alignment: .topTrailing) {
             // Swap front/back button (top right)
             GlassCircleButton(
