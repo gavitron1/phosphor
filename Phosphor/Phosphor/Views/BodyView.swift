@@ -98,15 +98,6 @@ struct BodyView: View {
                 // Scrollable content
                 ScrollView {
                     VStack(spacing: 0) {
-                        // Scroll offset tracker
-                        GeometryReader { proxy in
-                            Color.clear
-                                .preference(
-                                    key: ScrollOffsetPreferenceKey.self,
-                                    value: proxy.frame(in: .named("scroll")).minY
-                                )
-                        }
-                        .frame(height: 0)
                         // Body avatar section (screen height)
                         ZStack {
                             if daysOffset < 0 && !hasDataForSelectedDate {
@@ -152,6 +143,15 @@ struct BodyView: View {
                             }
                         }
                         .frame(height: geometry.size.height)
+                        .background(
+                            GeometryReader { proxy in
+                                Color.clear
+                                    .preference(
+                                        key: ScrollOffsetPreferenceKey.self,
+                                        value: proxy.frame(in: .global).minY
+                                    )
+                            }
+                        )
 
                         // Statistics section (below the fold)
                         VStack(spacing: 16) {
@@ -227,13 +227,13 @@ struct BodyView: View {
                         .padding()
                     }
                 }
-                .coordinateSpace(name: "scroll")
                 .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
                     scrollOffset = value
                 }
 
                 // Layer 2: Slider overlay - hide when scrolled down
-                if scrollOffset >= -50 {
+                // Using global coordinates: initial minY is ~100 (safe area), decreases when scrolling
+                if scrollOffset > 50 {
                     HStack {
                         Spacer()
 
