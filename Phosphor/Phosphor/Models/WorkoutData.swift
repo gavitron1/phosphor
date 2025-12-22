@@ -20,6 +20,17 @@ struct MuscleGroupData: Codable, Identifiable {
         let remaining = max(0, 1 - (elapsed / cooldownSeconds))
         return remaining
     }
+
+    /// Calculate intensity as it would have been at a specific reference date
+    func intensity(cooldownDays: Double, asOf referenceDate: Date) -> Double {
+        guard let lastTapped = lastTappedDate else { return 0 }
+        // If the tap happened after the reference date, it wouldn't have existed yet
+        if lastTapped > referenceDate { return 0 }
+        let elapsed = referenceDate.timeIntervalSince(lastTapped)
+        let cooldownSeconds = cooldownDays * 24 * 60 * 60
+        let remaining = max(0, 1 - (elapsed / cooldownSeconds))
+        return remaining
+    }
 }
 
 enum Gender: String, Codable, CaseIterable {

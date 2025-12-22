@@ -81,6 +81,11 @@ class DataManager: ObservableObject {
         return data.intensity(cooldownDays: settings.cooldownDays)
     }
 
+    func getIntensity(for group: MuscleGroup, asOf date: Date) -> Double {
+        guard let data = muscleGroupData[group] else { return 0 }
+        return data.intensity(cooldownDays: settings.cooldownDays, asOf: date)
+    }
+
     func getTapCount(for group: MuscleGroup) -> Int {
         muscleGroupData[group]?.tapCount ?? 0
     }

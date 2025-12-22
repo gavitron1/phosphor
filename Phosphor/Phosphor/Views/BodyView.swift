@@ -6,6 +6,34 @@ struct BodyView: View {
     @State private var showStats = false
     @State private var showSettings = false
     @State private var currentSide: BodySide = .front
+    @State private var daysAgo: Double = 0 // 0 = today, 10 = 10 days ago
+
+    private var selectedDate: Date {
+        Calendar.current.date(byAdding: .day, value: -Int(daysAgo), to: Date()) ?? Date()
+    }
+
+    private var endOfDayDate: Date {
+        // Get end of the selected day (23:59:59)
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: selectedDate)
+        return calendar.date(byAdding: .second, value: 86399, to: startOfDay) ?? selectedDate
+    }
+
+    private var dateText: String {
+        if daysAgo == 0 {
+            return "Today"
+        } else if daysAgo == 1 {
+            return "Yesterday"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateFormat = "MMM d"
+            return formatter.string(from: selectedDate)
+        }
+    }
+
+    private var isViewingHistory: Bool {
+        daysAgo > 0
+    }
 
     var body: some View {
         ZStack {
@@ -20,25 +48,25 @@ struct BodyView: View {
                     side: currentSide,
                     highlightColor: dataManager.settings.highlightColor.color,
                     darkMode: dataManager.settings.darkMode,
-                    getIntensity: { dataManager.getIntensity(for: $0) },
+                    getIntensity: { muscleGroup in
+                        if isViewingHistory {
+                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                        } else {
+                            return dataManager.getIntensity(for: muscleGroup)
+                        }
+                    },
                     onMuscleGroupTapped: { muscleGroup in
-                        dataManager.tapMuscleGroup(muscleGroup)
-                        hapticFeedback()
+                        // Only allow tapping when viewing today
+                        if !isViewingHistory {
+                            dataManager.tapMuscleGroup(muscleGroup)
+                            hapticFeedback()
+                        }
                     }
                 )
-
-                // Front/Back toggle
-                Picker("Side", selection: $currentSide) {
-                    ForEach(BodySide.allCases, id: \.self) { side in
-                        Text(side.rawValue).tag(side)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, 40)
-                .padding(.bottom, 8)
+                .allowsHitTesting(!isViewingHistory)
             }
 
-            // Top navigation buttons
+            // Top navigation with date
             VStack {
                 HStack {
                     // Stats button (top left)
@@ -47,6 +75,14 @@ struct BodyView: View {
                         color: dataManager.settings.highlightColor.color,
                         action: { showStats = true }
                     )
+
+                    Spacer()
+
+                    // Date display (center)
+                    Text(dateText)
+                        .font(.headline)
+                        .fontWeight(.semibold)
+                        .foregroundColor(isViewingHistory ? dataManager.settings.highlightColor.color : .primary)
 
                     Spacer()
 
@@ -61,6 +97,30 @@ struct BodyView: View {
                 .padding(.top, 8)
 
                 Spacer()
+
+                // Bottom controls
+                HStack(spacing: 12) {
+                    // History slider
+                    Slider(
+                        value: $daysAgo,
+                        in: 0...10,
+                        step: 1
+                    )
+                    .tint(dataManager.settings.highlightColor.color)
+
+                    // Swap front/back button
+                    GlassCircleButton(
+                        systemName: "arrow.left.arrow.right",
+                        color: dataManager.settings.highlightColor.color,
+                        action: {
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                currentSide = currentSide == .front ? .back : .front
+                            }
+                        }
+                    )
+                }
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
             }
         }
         .fullScreenCover(isPresented: $showStats) {
