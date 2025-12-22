@@ -95,14 +95,14 @@ struct BodyView: View {
                             }
                         }
                     )
-                    .frame(height: geometry.size.height - 16)
+                    .frame(height: geometry.size.height - 8)
                 }
 
-                // Layer 2: Controls overlay
+                // Layer 2: Controls overlay - centered vertically
                 HStack {
                     Spacer()
 
-                    // Right side: Swap button + Slider in VStack
+                    // Right side: Swap button + Slider in VStack, centered
                     VStack(spacing: 16) {
                         // Swap front/back button
                         GlassCircleButton(
@@ -130,11 +130,8 @@ struct BodyView: View {
                             }
                         )
                         .frame(width: 50, height: geometry.size.height / 3)
-
-                        Spacer()
                     }
                     .padding(.trailing, 8)
-                    .padding(.top, 8)
                 }
 
                 // Layer 3: Date label overlay
@@ -215,8 +212,8 @@ struct CameraZoomSlider: View {
     let onValueChanged: () -> Void
     let onRelease: () -> Void
 
-    @State private var dragOffset: CGFloat = 0
-    @State private var lastReportedValue: Double = 0
+    @State private var continuousDragValue: CGFloat = 0
+    @State private var lastReportedIntValue: Double = 0
 
     private let tickSpacing: CGFloat = 24
     private let tickWidth: CGFloat = 16
@@ -241,12 +238,12 @@ struct CameraZoomSlider: View {
             let tickCount = Int(range.upperBound - range.lowerBound) + 1
 
             ZStack {
-                // Moving tick marks
+                // Moving tick marks - use continuous value for smooth movement
                 ForEach(0..<tickCount, id: \.self) { index in
                     let tickValue = range.lowerBound + Double(index)
-                    // Position relative to current value
-                    // When value = tickValue, tick should be at center
-                    let offsetFromValue = tickValue - value
+                    // Use continuous drag value for smooth tick movement
+                    let displayValue = isDragging ? continuousDragValue : value
+                    let offsetFromValue = tickValue - displayValue
                     // Up = future (positive offset shows above center)
                     let tickY = centerY - (CGFloat(offsetFromValue) * tickSpacing)
 
@@ -261,7 +258,7 @@ struct CameraZoomSlider: View {
 
                 // Fixed indicator dot with day letter
                 HStack(spacing: 6) {
-                    // Day letter (only visible when dragging)
+                    // Day letter (visible when dragging)
                     Text(dayLetter(for: Int(value)))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(highlightColor)
@@ -282,24 +279,35 @@ struct CameraZoomSlider: View {
                     .gesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { gesture in
-                                isDragging = true
+                                // Set dragging immediately on touch
+                                if !isDragging {
+                                    isDragging = true
+                                    continuousDragValue = value
+                                }
+
                                 // Dragging up (negative translation) = future (positive value)
                                 // Dragging down (positive translation) = past (negative value)
                                 let dragDistance = -gesture.translation.height
                                 let valueChange = dragDistance / tickSpacing
 
-                                let newValue = round(valueChange)
-                                let clampedValue = max(range.lowerBound, min(newValue, range.upperBound))
+                                // Continuous value for smooth tick movement
+                                let newContinuousValue = max(range.lowerBound, min(valueChange, range.upperBound))
+                                continuousDragValue = newContinuousValue
 
-                                if clampedValue != lastReportedValue {
-                                    lastReportedValue = clampedValue
+                                // Round to integer for actual value
+                                let roundedValue = round(newContinuousValue)
+                                let clampedValue = max(range.lowerBound, min(roundedValue, range.upperBound))
+
+                                if clampedValue != lastReportedIntValue {
+                                    lastReportedIntValue = clampedValue
                                     value = clampedValue
                                     onValueChanged()
                                 }
                             }
                             .onEnded { _ in
                                 isDragging = false
-                                lastReportedValue = 0
+                                lastReportedIntValue = 0
+                                continuousDragValue = 0
                                 onRelease()
                             }
                     )
