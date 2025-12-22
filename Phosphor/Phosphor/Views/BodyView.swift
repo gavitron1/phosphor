@@ -15,8 +15,9 @@ struct BodyView: View {
     @State private var showFeedback: Bool = false
     @State private var feedbackTask: Task<Void, Never>?
 
-    // Scroll tracking - start high so slider shows before first preference update
-    @State private var scrollOffset: CGFloat = 1000
+    // Scroll tracking
+    @State private var scrollOffset: CGFloat = 0
+    @State private var initialScrollOffset: CGFloat? = nil
 
     // Effective dark mode based on appearance setting and system color scheme
     private var effectiveDarkMode: Bool {
@@ -228,12 +229,15 @@ struct BodyView: View {
                     }
                 }
                 .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
+                    if initialScrollOffset == nil {
+                        initialScrollOffset = value
+                    }
                     scrollOffset = value
                 }
 
                 // Layer 2: Slider overlay - hide when scrolled down
-                // Using global coordinates: initial minY is ~100 (safe area), decreases when scrolling
-                if scrollOffset > 50 {
+                // Show slider when at top (within 50pts of initial position)
+                if initialScrollOffset == nil || scrollOffset > (initialScrollOffset! - 50) {
                     HStack {
                         Spacer()
 
