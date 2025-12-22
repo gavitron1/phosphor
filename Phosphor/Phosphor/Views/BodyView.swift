@@ -98,27 +98,36 @@ struct BodyView: View {
 
                 Spacer()
 
-                // Bottom controls
+                // Bottom controls - integrated container
                 HStack(spacing: 12) {
-                    // History slider
+                    // History slider (reversed so today is on right)
                     Slider(
                         value: $daysAgo,
                         in: 0...10,
                         step: 1
                     )
                     .tint(dataManager.settings.highlightColor.color)
+                    .scaleEffect(x: -1, y: 1) // Flip horizontally so 0 (today) is on right
 
                     // Swap front/back button
-                    GlassCircleButton(
-                        systemName: "arrow.left.arrow.right",
-                        color: dataManager.settings.highlightColor.color,
-                        action: {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                currentSide = currentSide == .front ? .back : .front
-                            }
+                    Button(action: {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            currentSide = currentSide == .front ? .back : .front
                         }
-                    )
+                    }) {
+                        Image(systemName: "arrow.left.arrow.right")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(dataManager.settings.highlightColor.color)
+                            .frame(width: 44, height: 44)
+                    }
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 22)
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
             }
