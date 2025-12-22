@@ -8,6 +8,7 @@ enum CooldownMode: String, CaseIterable {
 struct SettingsView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var cloudKitManager = CloudKitManager.shared
+    @ObservedObject var notificationManager = NotificationManager.shared
     @Environment(\.dismiss) private var dismiss
 
     @State private var showDeleteConfirmation = false
@@ -25,6 +26,8 @@ struct SettingsView: View {
                 highlightColorSection
 
                 cooldownSection
+
+                notificationSection
 
                 syncSection
 
@@ -95,6 +98,55 @@ struct SettingsView: View {
             Text("Appearance")
         } footer: {
             Text("Inverts the body figure colors for dark backgrounds.")
+        }
+    }
+
+    // MARK: - Notification Section
+
+    private var notificationSection: some View {
+        Section {
+            HStack {
+                Image(systemName: notificationManager.isAuthorized ? "bell.badge.fill" : "bell.slash.fill")
+                    .foregroundColor(notificationManager.isAuthorized ? .green : .secondary)
+                Text("Notifications")
+                Spacer()
+                Text(notificationStatusText)
+                    .foregroundColor(.secondary)
+            }
+
+            if !notificationManager.isAuthorized {
+                Button(action: {
+                    Task {
+                        await notificationManager.requestAuthorization()
+                    }
+                }) {
+                    HStack {
+                        Image(systemName: "bell.badge")
+                        Text("Enable Notifications")
+                    }
+                }
+            }
+        } header: {
+            Text("Notifications")
+        } footer: {
+            Text("Get notified when muscle groups are about to reach full recovery.")
+        }
+    }
+
+    private var notificationStatusText: String {
+        switch notificationManager.authorizationStatus {
+        case .authorized:
+            return "Enabled"
+        case .denied:
+            return "Denied"
+        case .provisional:
+            return "Provisional"
+        case .ephemeral:
+            return "Ephemeral"
+        case .notDetermined:
+            return "Not Set"
+        @unknown default:
+            return "Unknown"
         }
     }
 

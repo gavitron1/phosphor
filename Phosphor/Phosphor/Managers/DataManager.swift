@@ -60,8 +60,33 @@ class DataManager: ObservableObject {
 
     // MARK: - Muscle Group Actions
 
-    func tapMuscleGroup(_ group: MuscleGroup) {
+    /// Tap a muscle group. If tapped again within 10 seconds, undo the tap.
+    /// Returns true if the tap was recorded, false if it was undone.
+    @discardableResult
+    func tapMuscleGroup(_ group: MuscleGroup) -> Bool {
         var data = muscleGroupData[group] ?? MuscleGroupData(muscleGroup: group)
+
+        // Check if this is an undo (tapped again within 10 seconds)
+        if let lastTapped = data.lastTappedDate {
+            let elapsed = Date().timeIntervalSince(lastTapped)
+            if elapsed < 10 {
+                // Undo: clear the last tap and decrement count
+                data = MuscleGroupData(
+                    muscleGroup: group,
+                    lastTappedDate: nil,
+                    tapCount: max(0, data.tapCount - 1)
+                )
+                muscleGroupData[group] = data
+                saveLocalData()
+
+                Task {
+                    await syncToCloud()
+                }
+                return false // Tap was undone
+            }
+        }
+
+        // Normal tap: record it
         data = MuscleGroupData(
             muscleGroup: group,
             lastTappedDate: Date(),
@@ -74,6 +99,7 @@ class DataManager: ObservableObject {
         Task {
             await syncToCloud()
         }
+        return true // Tap was recorded
     }
 
     func getIntensity(for group: MuscleGroup) -> Double {
