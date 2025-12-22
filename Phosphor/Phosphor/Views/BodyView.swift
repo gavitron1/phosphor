@@ -8,6 +8,11 @@ struct BodyView: View {
     @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
     @State private var isDragging: Bool = false
 
+    // Muscle feedback label state
+    @State private var feedbackText: String = ""
+    @State private var showFeedback: Bool = false
+    @State private var feedbackTask: Task<Void, Never>?
+
     private var selectedDate: Date {
         Calendar.current.date(byAdding: .day, value: Int(daysOffset), to: Date()) ?? Date()
     }
@@ -81,6 +86,7 @@ struct BodyView: View {
                             let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
                             if wasRecorded {
                                 hapticFeedbackTap()
+                                showMuscleFeedback(muscleGroup.rawValue)
                                 // Schedule cooldown notifications
                                 notificationManager.scheduleCooldownNotifications(
                                     muscleData: dataManager.muscleGroupData,
@@ -88,14 +94,15 @@ struct BodyView: View {
                                 )
                             } else {
                                 hapticFeedbackUndo()
+                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
                             }
                         }
                     }
                 )
             }
         }
-        .overlay(alignment: .topLeading) {
-            // Swap front/back button (top left)
+        .overlay(alignment: .topTrailing) {
+            // Swap front/back button (top right)
             GlassCircleButton(
                 systemName: "arrow.trianglehead.2.clockwise",
                 color: dataManager.settings.highlightColor.color,
@@ -105,17 +112,19 @@ struct BodyView: View {
                     }
                 }
             )
-            .padding(.leading, 16)
+            .padding(.trailing, 16)
             .padding(.top, 8)
         }
         .overlay(alignment: .top) {
-            // Date display (center top)
-            Text(dateText)
+            // Date/feedback display (center top)
+            Text(showFeedback ? feedbackText : dateText)
                 .font(.headline)
                 .fontWeight(.semibold)
-                .foregroundColor(isViewingHistory ? dataManager.settings.highlightColor.color : .primary)
+                .foregroundColor(showFeedback ? dataManager.settings.highlightColor.color : (isViewingHistory ? dataManager.settings.highlightColor.color : .primary))
                 .padding(.top, 18)
                 .allowsHitTesting(false)
+                .animation(.easeInOut(duration: 0.3), value: showFeedback)
+                .id(showFeedback ? feedbackText : "date") // Force view recreation for animation
         }
         .safeAreaInset(edge: .bottom) {
             // Custom centered slider
@@ -132,8 +141,31 @@ struct BodyView: View {
                     }
                 }
             )
-            .padding(.horizontal, 16)
-            .padding(.bottom, 8)
+            .padding(.horizontal, 32)
+            .padding(.bottom, 16)
+        }
+    }
+
+    private func showMuscleFeedback(_ text: String) {
+        // Cancel any existing fade-out task
+        feedbackTask?.cancel()
+
+        // Show the feedback
+        feedbackText = text
+        withAnimation(.easeIn(duration: 0.2)) {
+            showFeedback = true
+        }
+
+        // Schedule fade-out after 4 seconds
+        feedbackTask = Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000) // 4 seconds
+            if !Task.isCancelled {
+                await MainActor.run {
+                    withAnimation(.easeOut(duration: 0.3)) {
+                        showFeedback = false
+                    }
+                }
+            }
         }
     }
 
