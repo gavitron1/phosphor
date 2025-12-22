@@ -15,8 +15,8 @@ struct BodyView: View {
     @State private var showFeedback: Bool = false
     @State private var feedbackTask: Task<Void, Never>?
 
-    // Scroll tracking
-    @State private var scrollOffset: CGFloat = 0
+    // Scroll tracking - start high so slider shows before first preference update
+    @State private var scrollOffset: CGFloat = 1000
 
     // Effective dark mode based on appearance setting and system color scheme
     private var effectiveDarkMode: Bool {
