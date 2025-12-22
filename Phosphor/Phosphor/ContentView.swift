@@ -12,26 +12,19 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            StatsView()
-                .tabItem {
-                    Image(systemName: "chart.bar.fill")
-                }
-                .tag(1)
-
             CalendarView()
                 .tabItem {
                     Image(systemName: "calendar")
                 }
-                .tag(2)
+                .tag(1)
 
             SettingsView()
                 .tabItem {
                     Image(systemName: "gearshape.fill")
                 }
-                .tag(3)
+                .tag(2)
         }
         .tint(dataManager.settings.highlightColor.color)
-        .preferredColorScheme(dataManager.settings.darkMode ? .dark : .light)
         .onAppear {
             Task {
                 await dataManager.syncFromCloud()
