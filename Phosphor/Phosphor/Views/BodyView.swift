@@ -5,10 +5,10 @@ struct BodyView: View {
     @ObservedObject var notificationManager = NotificationManager.shared
 
     @State private var currentSide: BodySide = .front
-    @State private var daysAgo: Double = 0 // 0 = today, 10 = 10 days ago
+    @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
 
     private var selectedDate: Date {
-        Calendar.current.date(byAdding: .day, value: -Int(daysAgo), to: Date()) ?? Date()
+        Calendar.current.date(byAdding: .day, value: Int(daysOffset), to: Date()) ?? Date()
     }
 
     private var endOfDayDate: Date {
@@ -19,10 +19,12 @@ struct BodyView: View {
     }
 
     private var dateText: String {
-        if daysAgo == 0 {
+        if daysOffset == 0 {
             return "Today"
-        } else if daysAgo == 1 {
+        } else if daysOffset == -1 {
             return "Yesterday"
+        } else if daysOffset == 1 {
+            return "Tomorrow"
         } else {
             let formatter = DateFormatter()
             formatter.dateFormat = "MMM d"
@@ -31,7 +33,17 @@ struct BodyView: View {
     }
 
     private var isViewingHistory: Bool {
-        daysAgo > 0
+        daysOffset != 0
+    }
+
+    private var hasDataForSelectedDate: Bool {
+        // Check if any muscle group has intensity > 0 for the selected date
+        for group in MuscleGroup.allCases {
+            if dataManager.getIntensity(for: group, asOf: endOfDayDate) > 0 {
+                return true
+            }
+        }
+        return false
     }
 
     var body: some View {
@@ -40,37 +52,47 @@ struct BodyView: View {
             Color(.systemGroupedBackground)
                 .ignoresSafeArea()
 
-            // Body image view - fills safe area
-            TappableBodyView(
-                gender: dataManager.settings.gender,
-                side: currentSide,
-                highlightColor: dataManager.settings.highlightColor.color,
-                darkMode: dataManager.settings.darkMode,
-                getIntensity: { muscleGroup in
-                    if isViewingHistory {
-                        return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
-                    } else {
-                        return dataManager.getIntensity(for: muscleGroup)
-                    }
-                },
-                onMuscleGroupTapped: { muscleGroup in
-                    // Only allow tapping when viewing today
-                    if !isViewingHistory {
-                        let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                        if wasRecorded {
-                            hapticFeedbackTap()
-                            // Schedule cooldown notifications
-                            notificationManager.scheduleCooldownNotifications(
-                                muscleData: dataManager.muscleGroupData,
-                                cooldownDays: dataManager.settings.cooldownDays
-                            )
+            if isViewingHistory && !hasDataForSelectedDate {
+                // No data message
+                VStack(spacing: 8) {
+                    Text("No Data")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                        .foregroundColor(.secondary)
+                }
+            } else {
+                // Body image view - fills safe area
+                TappableBodyView(
+                    gender: dataManager.settings.gender,
+                    side: currentSide,
+                    highlightColor: dataManager.settings.highlightColor.color,
+                    darkMode: dataManager.settings.darkMode,
+                    getIntensity: { muscleGroup in
+                        if isViewingHistory {
+                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
                         } else {
-                            hapticFeedbackUndo()
+                            return dataManager.getIntensity(for: muscleGroup)
+                        }
+                    },
+                    onMuscleGroupTapped: { muscleGroup in
+                        // Only allow tapping when viewing today
+                        if !isViewingHistory {
+                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
+                            if wasRecorded {
+                                hapticFeedbackTap()
+                                // Schedule cooldown notifications
+                                notificationManager.scheduleCooldownNotifications(
+                                    muscleData: dataManager.muscleGroupData,
+                                    cooldownDays: dataManager.settings.cooldownDays
+                                )
+                            } else {
+                                hapticFeedbackUndo()
+                            }
                         }
                     }
-                }
-            )
-            .allowsHitTesting(!isViewingHistory)
+                )
+                .allowsHitTesting(!isViewingHistory)
+            }
 
             // Top navigation
             VStack {
@@ -106,23 +128,26 @@ struct BodyView: View {
             // History slider - full width above tab bar
             VStack(spacing: 0) {
                 Slider(
-                    value: $daysAgo,
-                    in: 0...10,
-                    step: 1
+                    value: $daysOffset,
+                    in: -7...7,
+                    step: 1,
+                    onEditingChanged: { editing in
+                        if !editing {
+                            // Snap back to center when finger is lifted
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                daysOffset = 0
+                            }
+                        }
+                    }
                 )
                 .tint(dataManager.settings.highlightColor.color)
-                .scaleEffect(x: -1, y: 1) // Flip horizontally so 0 (today) is on right
-                .onChange(of: daysAgo) { oldValue, newValue in
+                .onChange(of: daysOffset) { oldValue, newValue in
                     if oldValue != newValue {
                         sliderDetentFeedback()
                     }
                 }
                 .padding(.horizontal, 20)
                 .padding(.vertical, 12)
-                .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
-                        .fill(.ultraThinMaterial)
-                )
                 .padding(.horizontal, 16)
                 .padding(.bottom, 8)
             }

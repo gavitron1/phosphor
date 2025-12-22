@@ -1,10 +1,5 @@
 import SwiftUI
 
-enum CooldownMode: String, CaseIterable {
-    case minutes = "Minutes"
-    case days = "Days"
-}
-
 struct SettingsView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var cloudKitManager = CloudKitManager.shared
@@ -13,7 +8,6 @@ struct SettingsView: View {
     @State private var showDeleteConfirmation = false
     @State private var isDeleting = false
     @State private var deleteError: String?
-    @State private var cooldownMode: CooldownMode = .days
 
     var body: some View {
         NavigationStack {
@@ -209,20 +203,29 @@ struct SettingsView: View {
 
     private var cooldownSection: some View {
         Section {
-            VStack(alignment: .leading, spacing: 12) {
-                // Mode toggle
-                Picker("Mode", selection: $cooldownMode) {
-                    ForEach(CooldownMode.allCases, id: \.self) { mode in
-                        Text(mode.rawValue).tag(mode)
+            VStack(alignment: .leading, spacing: 16) {
+                // Slider with tickmarks
+                VStack(spacing: 8) {
+                    // Tickmarks
+                    HStack {
+                        ForEach(1...7, id: \.self) { day in
+                            Text("\(day)")
+                                .font(.caption2)
+                                .foregroundColor(Int(dataManager.settings.cooldownDays) == day ? dataManager.settings.highlightColor.color : .secondary)
+                                .frame(maxWidth: .infinity)
+                        }
                     }
-                }
-                .pickerStyle(.segmented)
 
-                // Preset buttons based on mode
-                if cooldownMode == .minutes {
-                    minutesPresetButtons
-                } else {
-                    daysPresetButtons
+                    // Slider
+                    Slider(
+                        value: Binding(
+                            get: { dataManager.settings.cooldownDays },
+                            set: { dataManager.updateCooldownDays($0) }
+                        ),
+                        in: 1...7,
+                        step: 1
+                    )
+                    .tint(dataManager.settings.highlightColor.color)
                 }
 
                 Text("Muscle groups will fade completely after \(cooldownText)")
@@ -230,15 +233,6 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
             }
             .padding(.vertical, 4)
-            .onAppear {
-                // Auto-detect mode based on current value
-                let days = dataManager.settings.cooldownDays
-                if days < 1 {
-                    cooldownMode = .minutes
-                } else {
-                    cooldownMode = .days
-                }
-            }
         } header: {
             Text("Cooldown Time")
         } footer: {
@@ -246,108 +240,9 @@ struct SettingsView: View {
         }
     }
 
-    private var minutesPresetButtons: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 3), spacing: 8) {
-            ForEach(minutesPresets, id: \.label) { preset in
-                let isSelected = isMinutesPresetSelected(preset.value)
-                Button(action: {
-                    dataManager.updateCooldownDays(preset.value)
-                }) {
-                    Text(preset.label)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            isSelected
-                                ? dataManager.settings.highlightColor.color
-                                : Color(.systemGray5)
-                        )
-                        .foregroundColor(isSelected ? .white : .primary)
-                        .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-        }
-    }
-
-    private var daysPresetButtons: some View {
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 4), spacing: 8) {
-            ForEach(daysPresets, id: \.label) { preset in
-                let isSelected = isDaysPresetSelected(preset.value)
-                Button(action: {
-                    dataManager.updateCooldownDays(preset.value)
-                }) {
-                    Text(preset.label)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(
-                            isSelected
-                                ? dataManager.settings.highlightColor.color
-                                : Color(.systemGray5)
-                        )
-                        .foregroundColor(isSelected ? .white : .primary)
-                        .cornerRadius(8)
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-        }
-    }
-
-    private var minutesPresets: [(label: String, value: Double)] {
-        [
-            ("10 sec", 10.0 / 86400.0),
-            ("30 sec", 30.0 / 86400.0),
-            ("1 min", 60.0 / 86400.0),
-            ("2 min", 120.0 / 86400.0),
-            ("3 min", 180.0 / 86400.0),
-            ("5 min", 300.0 / 86400.0)
-        ]
-    }
-
-    private var daysPresets: [(label: String, value: Double)] {
-        [
-            ("1 day", 1.0),
-            ("2 days", 2.0),
-            ("3 days", 3.0),
-            ("4 days", 4.0),
-            ("5 days", 5.0),
-            ("6 days", 6.0),
-            ("7 days", 7.0)
-        ]
-    }
-
-    private func isMinutesPresetSelected(_ value: Double) -> Bool {
-        guard cooldownMode == .minutes else { return false }
-        return abs(dataManager.settings.cooldownDays - value) < 0.0001
-    }
-
-    private func isDaysPresetSelected(_ value: Double) -> Bool {
-        guard cooldownMode == .days else { return false }
-        return abs(dataManager.settings.cooldownDays - value) < 0.01
-    }
-
     private var cooldownText: String {
-        let days = dataManager.settings.cooldownDays
-        let totalSeconds = days * 86400
-
-        if totalSeconds < 60 {
-            return "\(Int(totalSeconds)) seconds"
-        } else if totalSeconds < 3600 {
-            let minutes = Int(totalSeconds / 60)
-            return minutes == 1 ? "1 minute" : "\(minutes) minutes"
-        } else if days < 1 {
-            let hours = Int(totalSeconds / 3600)
-            return hours == 1 ? "1 hour" : "\(hours) hours"
-        } else if days == 1 {
-            return "1 day"
-        } else if days == floor(days) {
-            return "\(Int(days)) days"
-        } else {
-            return String(format: "%.1f days", days)
-        }
+        let days = Int(dataManager.settings.cooldownDays)
+        return days == 1 ? "1 day" : "\(days) days"
     }
 
     // MARK: - iCloud Section

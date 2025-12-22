@@ -2,31 +2,31 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var dataManager = DataManager.shared
-    @State private var selectedTab = 1 // Start on Body tab (middle)
+    @State private var selectedTab = 0 // Start on Body tab (first)
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            StatsView()
+            BodyView()
                 .tabItem {
-                    Label("Stats", systemImage: "chart.bar.fill")
+                    Image(systemName: "figure.stand")
                 }
                 .tag(0)
 
-            BodyView()
+            StatsView()
                 .tabItem {
-                    Label("Body", systemImage: "figure.stand")
+                    Image(systemName: "chart.bar.fill")
                 }
                 .tag(1)
 
             CalendarView()
                 .tabItem {
-                    Label("Calendar", systemImage: "calendar")
+                    Image(systemName: "calendar")
                 }
                 .tag(2)
 
             SettingsView()
                 .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
+                    Image(systemName: "gearshape.fill")
                 }
                 .tag(3)
         }
