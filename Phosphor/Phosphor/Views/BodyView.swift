@@ -230,6 +230,7 @@ struct CenteredVerticalSlider: View {
     let onRelease: () -> Void
 
     @State private var lastReportedIntValue: Double = 0
+    @GestureState private var dragOffset: CGFloat = 0
 
     private let trackWidth: CGFloat = 4
     private let handleSize: CGFloat = 24
@@ -250,8 +251,9 @@ struct CenteredVerticalSlider: View {
             let rangeSpan = range.upperBound - range.lowerBound
 
             // Calculate handle position (up = future/positive, down = past/negative)
-            let normalizedValue = value / rangeSpan
-            let handleY = centerY - (CGFloat(normalizedValue) * usableHeight / 2)
+            // Handle can travel full height of slider
+            let valueRatio = value / (rangeSpan / 2)  // -1 to 1 for the range
+            let handleY = centerY - (CGFloat(valueRatio) * usableHeight / 2)
 
             ZStack {
                 // Track background
@@ -261,7 +263,8 @@ struct CenteredVerticalSlider: View {
 
                 // Highlight fill from center
                 if value != 0 {
-                    let fillHeight = abs(CGFloat(normalizedValue) * usableHeight / 2)
+                    let fillRatio = abs(value / (rangeSpan / 2))
+                    let fillHeight = CGFloat(fillRatio) * usableHeight / 2
                     let fillY = value > 0 ? centerY - fillHeight / 2 : centerY + fillHeight / 2
 
                     RoundedRectangle(cornerRadius: trackWidth / 2)
@@ -270,14 +273,12 @@ struct CenteredVerticalSlider: View {
                         .position(x: geometry.size.width / 2, y: fillY)
                 }
 
-                // Handle with day letter
+                // Handle with day letter - always visible
                 HStack(spacing: 6) {
-                    // Day letter (visible when dragging)
+                    // Day letter (always shown)
                     Text(dayLetter(for: Int(value)))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(highlightColor)
-                        .opacity(isDragging ? 1 : 0)
-                        .animation(.easeInOut(duration: 0.15), value: isDragging)
 
                     // White handle
                     Circle()
@@ -301,8 +302,8 @@ struct CenteredVerticalSlider: View {
                                 // Dragging up (negative translation) = future (positive value)
                                 // Dragging down (positive translation) = past (negative value)
                                 let dragDistance = -gesture.translation.height
-                                let valuePerPoint = rangeSpan / Double(usableHeight)
-                                let valueChange = dragDistance * valuePerPoint
+                                let pointsPerValue = usableHeight / CGFloat(rangeSpan)
+                                let valueChange = dragDistance / pointsPerValue
 
                                 let newValue = max(range.lowerBound, min(valueChange, range.upperBound))
                                 let roundedValue = round(newValue)
