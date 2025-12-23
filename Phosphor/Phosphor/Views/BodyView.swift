@@ -293,9 +293,7 @@ struct BodyView: View {
                             systemName: "arrow.trianglehead.2.clockwise",
                             color: dataManager.settings.highlightColor.color,
                             action: {
-                                withAnimation(.easeInOut(duration: 0.2)) {
-                                    currentSide = currentSide == .front ? .back : .front
-                                }
+                                currentSide = currentSide == .front ? .back : .front
                             }
                         )
                     }
@@ -313,9 +311,7 @@ struct BodyView: View {
                     let verticalDistance = abs(gesture.translation.height)
 
                     if abs(horizontalDistance) > verticalDistance {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            currentSide = currentSide == .front ? .back : .front
-                        }
+                        currentSide = currentSide == .front ? .back : .front
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
                     }
@@ -372,7 +368,8 @@ struct CenteredVerticalSlider: View {
     @GestureState private var dragOffset: CGFloat = 0
 
     private let trackWidth: CGFloat = 4
-    private let handleSize: CGFloat = 24
+    private let handleWidth: CGFloat = 12
+    private let handleHeight: CGFloat = 24
 
     private func dayLetter(for offset: Int) -> String {
         let calendar = Calendar.current
@@ -386,13 +383,14 @@ struct CenteredVerticalSlider: View {
         GeometryReader { geometry in
             let totalHeight = geometry.size.height
             let centerY = totalHeight / 2
-            let usableHeight = totalHeight - handleSize
+            let usableHeight = totalHeight - handleHeight
             let rangeSpan = range.upperBound - range.lowerBound
 
             // Calculate handle position (up = future/positive, down = past/negative)
             // Handle can travel full height of slider
             let valueRatio = value / (rangeSpan / 2)  // -1 to 1 for the range
             let handleY = centerY - (CGFloat(valueRatio) * usableHeight / 2)
+            let trackCenterX = geometry.size.width / 2
 
             ZStack {
                 // Track background
@@ -413,19 +411,19 @@ struct CenteredVerticalSlider: View {
                 }
 
                 // Handle with day letter - always visible
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
                     // Day letter (always shown)
                     Text(dayLetter(for: Int(value)))
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundColor(highlightColor)
 
-                    // White handle
-                    Circle()
+                    // Pill-shaped handle (2:1 ratio, fully rounded)
+                    Capsule()
                         .fill(Color.white)
-                        .frame(width: handleSize, height: handleSize)
+                        .frame(width: handleWidth, height: handleHeight)
                         .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
                 }
-                .position(x: geometry.size.width / 2 - 10, y: handleY)
+                .position(x: trackCenterX - handleWidth/2 - 4, y: handleY)
 
                 // Invisible drag area
                 Rectangle()
