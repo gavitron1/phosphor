@@ -254,8 +254,8 @@ struct BodyView: View {
                                 }
                             }
                         )
-                        .frame(width: 60, height: geometry.size.height / 3)
-                        .padding(.trailing, 8)
+                        .frame(width: 56, height: geometry.size.height / 3)
+                        .padding(.trailing, 0)
                     }
                     .transition(.opacity)
                 }
@@ -390,13 +390,15 @@ struct CenteredVerticalSlider: View {
             // Handle can travel full height of slider
             let valueRatio = value / (rangeSpan / 2)  // -1 to 1 for the range
             let handleY = centerY - (CGFloat(valueRatio) * usableHeight / 2)
-            let trackCenterX = geometry.size.width / 2
+            // Position track at right side of frame
+            let trackX = geometry.size.width - trackWidth/2 - 8
 
             ZStack {
                 // Track background
                 RoundedRectangle(cornerRadius: trackWidth / 2)
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: trackWidth, height: totalHeight)
+                    .position(x: trackX, y: centerY)
 
                 // Highlight fill from center
                 if value != 0 {
@@ -407,23 +409,21 @@ struct CenteredVerticalSlider: View {
                     RoundedRectangle(cornerRadius: trackWidth / 2)
                         .fill(highlightColor)
                         .frame(width: trackWidth, height: fillHeight)
-                        .position(x: geometry.size.width / 2, y: fillY)
+                        .position(x: trackX, y: fillY)
                 }
 
-                // Handle with day letter - always visible
-                HStack(spacing: 8) {
-                    // Day letter (always shown)
-                    Text(dayLetter(for: Int(value)))
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundColor(highlightColor)
+                // Day letter - positioned to the left of the track
+                Text(dayLetter(for: Int(value)))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundColor(highlightColor)
+                    .position(x: trackX - 20, y: handleY)
 
-                    // Pill-shaped handle (2:1 ratio, fully rounded)
-                    Capsule()
-                        .fill(Color.white)
-                        .frame(width: handleWidth, height: handleHeight)
-                        .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
-                }
-                .position(x: trackCenterX - handleWidth/2 - 4, y: handleY)
+                // Pill-shaped handle (2:1 ratio, fully rounded) - centered on track
+                Capsule()
+                    .fill(Color.white)
+                    .frame(width: handleWidth, height: handleHeight)
+                    .shadow(color: .black.opacity(0.2), radius: 4, x: 0, y: 2)
+                    .position(x: trackX, y: handleY)
 
                 // Invisible drag area
                 Rectangle()
