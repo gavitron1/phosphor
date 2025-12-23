@@ -15,10 +15,6 @@ struct BodyView: View {
     @State private var showFeedback: Bool = false
     @State private var feedbackTask: Task<Void, Never>?
 
-    // Scroll tracking
-    @State private var scrollOffset: CGFloat = 0
-    @State private var initialScrollOffset: CGFloat? = nil
-
     // Effective dark mode based on appearance setting and system color scheme
     private var effectiveDarkMode: Bool {
         switch dataManager.settings.appearanceMode {
@@ -100,59 +96,76 @@ struct BodyView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Body avatar section (screen height)
-                        ZStack {
-                            if daysOffset < 0 && !hasDataForSelectedDate {
-                                VStack(spacing: 8) {
-                                    Text("No Data")
-                                        .font(.title2)
-                                        .fontWeight(.semibold)
-                                        .foregroundColor(.secondary)
-                                }
-                                .frame(height: geometry.size.height)
-                            } else {
-                                TappableBodyView(
-                                    gender: dataManager.settings.gender,
-                                    side: currentSide,
-                                    highlightColor: dataManager.settings.highlightColor.color,
-                                    darkMode: effectiveDarkMode,
-                                    cooldownDays: dataManager.settings.cooldownDays,
-                                    getIntensity: { muscleGroup in
-                                        if isViewingHistory {
-                                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
-                                        } else {
-                                            return dataManager.getIntensity(for: muscleGroup)
-                                        }
-                                    },
-                                    onMuscleGroupTapped: { muscleGroup in
-                                        if !isViewingHistory {
-                                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                                            if wasRecorded {
-                                                hapticFeedbackTap()
-                                                showMuscleFeedback(muscleGroup.rawValue)
-                                                notificationManager.scheduleCooldownNotifications(
-                                                    muscleData: dataManager.muscleGroupData,
-                                                    cooldownDays: dataManager.settings.cooldownDays
-                                                )
-                                            } else {
-                                                hapticFeedbackUndo()
-                                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
-                                            }
-                                        }
+                        HStack(spacing: 0) {
+                            // Body with face
+                            ZStack {
+                                if daysOffset < 0 && !hasDataForSelectedDate {
+                                    VStack(spacing: 8) {
+                                        Text("No Data")
+                                            .font(.title2)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.secondary)
                                     }
-                                )
-                                .frame(height: geometry.size.height + 8)
+                                    .frame(height: geometry.size.height)
+                                } else {
+                                    VStack(spacing: 0) {
+                                        // Face
+                                        FaceView(darkMode: effectiveDarkMode, side: currentSide)
+                                            .frame(width: 40, height: 50)
+                                            .padding(.top, 60)
+
+                                        TappableBodyView(
+                                            gender: dataManager.settings.gender,
+                                            side: currentSide,
+                                            highlightColor: dataManager.settings.highlightColor.color,
+                                            darkMode: effectiveDarkMode,
+                                            cooldownDays: dataManager.settings.cooldownDays,
+                                            getIntensity: { muscleGroup in
+                                                if isViewingHistory {
+                                                    return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                                                } else {
+                                                    return dataManager.getIntensity(for: muscleGroup)
+                                                }
+                                            },
+                                            onMuscleGroupTapped: { muscleGroup in
+                                                if !isViewingHistory {
+                                                    let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
+                                                    if wasRecorded {
+                                                        hapticFeedbackTap()
+                                                        showMuscleFeedback(muscleGroup.rawValue)
+                                                        notificationManager.scheduleCooldownNotifications(
+                                                            muscleData: dataManager.muscleGroupData,
+                                                            cooldownDays: dataManager.settings.cooldownDays
+                                                        )
+                                                    } else {
+                                                        hapticFeedbackUndo()
+                                                        showMuscleFeedback("\(muscleGroup.rawValue) Removed")
+                                                    }
+                                                }
+                                            }
+                                        )
+                                        .frame(height: geometry.size.height - 50)
+                                    }
+                                }
                             }
+                            .frame(maxWidth: .infinity)
+
+                            // Slider on the right - scrolls with body
+                            CenteredVerticalSlider(
+                                value: $daysOffset,
+                                isDragging: $isDragging,
+                                range: -7...7,
+                                highlightColor: dataManager.settings.highlightColor.color,
+                                onValueChanged: { sliderDetentFeedback() },
+                                onRelease: {
+                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                        daysOffset = 0
+                                    }
+                                }
+                            )
+                            .frame(width: 56, height: geometry.size.height / 3)
                         }
                         .frame(height: geometry.size.height)
-                        .background(
-                            GeometryReader { proxy in
-                                Color.clear
-                                    .preference(
-                                        key: ScrollOffsetPreferenceKey.self,
-                                        value: proxy.frame(in: .global).minY
-                                    )
-                            }
-                        )
 
                         // Statistics section (below the fold)
                         VStack(spacing: 16) {
@@ -228,39 +241,7 @@ struct BodyView: View {
                         .padding()
                     }
                 }
-                .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                    if initialScrollOffset == nil {
-                        initialScrollOffset = value
-                    }
-                    scrollOffset = value
-                }
-
-                // Layer 2: Slider overlay - hide when scrolled down
-                // Show slider when at top (within 50pts of initial position)
-                if initialScrollOffset == nil || scrollOffset > (initialScrollOffset! - 50) {
-                    HStack {
-                        Spacer()
-
-                        // Right side: Vertical centered slider (1/3 of screen height)
-                        CenteredVerticalSlider(
-                            value: $daysOffset,
-                            isDragging: $isDragging,
-                            range: -7...7,
-                            highlightColor: dataManager.settings.highlightColor.color,
-                            onValueChanged: { sliderDetentFeedback() },
-                            onRelease: {
-                                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                    daysOffset = 0
-                                }
-                            }
-                        )
-                        .frame(width: 56, height: geometry.size.height / 3)
-                        .padding(.trailing, 0)
-                    }
-                    .transition(.opacity)
-                }
-
-                // Layer 3: Top bar overlay (clock button + date label + swap button)
+                // Layer 2: Top bar overlay (clock button + date label + swap button)
                 VStack {
                     HStack {
                         // Clock button (top left)
@@ -638,12 +619,56 @@ struct MuscleStatRow: View {
     }
 }
 
-// MARK: - Scroll Offset Preference Key
+// MARK: - Face View
 
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
+struct FaceView: View {
+    let darkMode: Bool
+    let side: BodySide
+
+    private var faceColor: Color {
+        darkMode ? .white : .black
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            let width = geometry.size.width
+            let height = geometry.size.height
+
+            ZStack {
+                // Head oval
+                Ellipse()
+                    .stroke(faceColor, lineWidth: 2)
+                    .frame(width: width, height: height)
+
+                if side == .front {
+                    // Eyes
+                    HStack(spacing: width * 0.25) {
+                        Circle()
+                            .fill(faceColor)
+                            .frame(width: width * 0.12, height: width * 0.12)
+                        Circle()
+                            .fill(faceColor)
+                            .frame(width: width * 0.12, height: width * 0.12)
+                    }
+                    .offset(y: -height * 0.1)
+
+                    // Smile
+                    Path { path in
+                        let smileWidth = width * 0.35
+                        let smileHeight = height * 0.08
+                        let startX = (width - smileWidth) / 2
+                        let startY = height * 0.55
+
+                        path.move(to: CGPoint(x: startX, y: startY))
+                        path.addQuadCurve(
+                            to: CGPoint(x: startX + smileWidth, y: startY),
+                            control: CGPoint(x: width / 2, y: startY + smileHeight)
+                        )
+                    }
+                    .stroke(faceColor, lineWidth: 1.5)
+                }
+            }
+        }
     }
 }
 
