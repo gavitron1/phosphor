@@ -108,44 +108,37 @@ struct BodyView: View {
                                     }
                                     .frame(height: geometry.size.height)
                                 } else {
-                                    VStack(spacing: 0) {
-                                        // Face
-                                        FaceView(darkMode: effectiveDarkMode, side: currentSide)
-                                            .frame(width: 40, height: 50)
-                                            .padding(.top, 60)
-
-                                        TappableBodyView(
-                                            gender: dataManager.settings.gender,
-                                            side: currentSide,
-                                            highlightColor: dataManager.settings.highlightColor.color,
-                                            darkMode: effectiveDarkMode,
-                                            cooldownDays: dataManager.settings.cooldownDays,
-                                            getIntensity: { muscleGroup in
-                                                if isViewingHistory {
-                                                    return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                                    TappableBodyView(
+                                        gender: dataManager.settings.gender,
+                                        side: currentSide,
+                                        highlightColor: dataManager.settings.highlightColor.color,
+                                        darkMode: effectiveDarkMode,
+                                        cooldownDays: dataManager.settings.cooldownDays,
+                                        getIntensity: { muscleGroup in
+                                            if isViewingHistory {
+                                                return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                                            } else {
+                                                return dataManager.getIntensity(for: muscleGroup)
+                                            }
+                                        },
+                                        onMuscleGroupTapped: { muscleGroup in
+                                            if !isViewingHistory {
+                                                let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
+                                                if wasRecorded {
+                                                    hapticFeedbackTap()
+                                                    showMuscleFeedback(muscleGroup.rawValue)
+                                                    notificationManager.scheduleCooldownNotifications(
+                                                        muscleData: dataManager.muscleGroupData,
+                                                        cooldownDays: dataManager.settings.cooldownDays
+                                                    )
                                                 } else {
-                                                    return dataManager.getIntensity(for: muscleGroup)
-                                                }
-                                            },
-                                            onMuscleGroupTapped: { muscleGroup in
-                                                if !isViewingHistory {
-                                                    let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                                                    if wasRecorded {
-                                                        hapticFeedbackTap()
-                                                        showMuscleFeedback(muscleGroup.rawValue)
-                                                        notificationManager.scheduleCooldownNotifications(
-                                                            muscleData: dataManager.muscleGroupData,
-                                                            cooldownDays: dataManager.settings.cooldownDays
-                                                        )
-                                                    } else {
-                                                        hapticFeedbackUndo()
-                                                        showMuscleFeedback("\(muscleGroup.rawValue) Removed")
-                                                    }
+                                                    hapticFeedbackUndo()
+                                                    showMuscleFeedback("\(muscleGroup.rawValue) Removed")
                                                 }
                                             }
-                                        )
-                                        .frame(height: geometry.size.height - 50)
-                                    }
+                                        }
+                                    )
+                                    .frame(height: geometry.size.height)
                                 }
                             }
                             .frame(maxWidth: .infinity)
@@ -616,59 +609,6 @@ struct MuscleStatRow: View {
         guard maxCount > 0 else { return 0 }
         let percentage = CGFloat(data.tapCount) / CGFloat(maxCount)
         return totalWidth * percentage
-    }
-}
-
-// MARK: - Face View
-
-struct FaceView: View {
-    let darkMode: Bool
-    let side: BodySide
-
-    private var faceColor: Color {
-        darkMode ? .white : .black
-    }
-
-    var body: some View {
-        GeometryReader { geometry in
-            let width = geometry.size.width
-            let height = geometry.size.height
-
-            ZStack {
-                // Head oval
-                Ellipse()
-                    .stroke(faceColor, lineWidth: 2)
-                    .frame(width: width, height: height)
-
-                if side == .front {
-                    // Eyes
-                    HStack(spacing: width * 0.25) {
-                        Circle()
-                            .fill(faceColor)
-                            .frame(width: width * 0.12, height: width * 0.12)
-                        Circle()
-                            .fill(faceColor)
-                            .frame(width: width * 0.12, height: width * 0.12)
-                    }
-                    .offset(y: -height * 0.1)
-
-                    // Smile
-                    Path { path in
-                        let smileWidth = width * 0.35
-                        let smileHeight = height * 0.08
-                        let startX = (width - smileWidth) / 2
-                        let startY = height * 0.55
-
-                        path.move(to: CGPoint(x: startX, y: startY))
-                        path.addQuadCurve(
-                            to: CGPoint(x: startX + smileWidth, y: startY),
-                            control: CGPoint(x: width / 2, y: startY + smileHeight)
-                        )
-                    }
-                    .stroke(faceColor, lineWidth: 1.5)
-                }
-            }
-        }
     }
 }
 
