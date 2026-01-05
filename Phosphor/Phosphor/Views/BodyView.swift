@@ -7,6 +7,12 @@ enum WeightTrend {
     case insufficient
 }
 
+enum CapsuleDisplayMode: Equatable {
+    case weight
+    case date
+    case feedback(String)
+}
+
 struct BodyView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var notificationManager = NotificationManager.shared
@@ -20,9 +26,9 @@ struct BodyView: View {
     @State private var showCalendar: Bool = false
     @State private var showSettings: Bool = false
 
-    // Muscle feedback label state
+    // Dynamic capsule state
     @State private var feedbackText: String = ""
-    @State private var showFeedback: Bool = false
+    @State private var capsuleMode: CapsuleDisplayMode = .weight
     @State private var feedbackTask: Task<Void, Never>?
 
     // Effective dark mode based on appearance setting and system color scheme
@@ -119,6 +125,18 @@ struct BodyView: View {
             return .up
         } else {
             return .down
+        }
+    }
+
+    // Effective display mode for the dynamic capsule
+    // Priority: feedback > date (when slider active) > weight
+    private var effectiveDisplayMode: CapsuleDisplayMode {
+        if case .feedback = capsuleMode {
+            return capsuleMode
+        } else if isDragging || daysOffset != 0 {
+            return .date
+        } else {
+            return .weight
         }
     }
 
@@ -274,7 +292,7 @@ struct BodyView: View {
                 }
                 // Layer 2: Button overlays
                 VStack {
-                    // Top row: Clock (left), Date (center), Settings (right)
+                    // Top row: Clock (left), Settings (right)
                     HStack {
                         // Clock button (top left)
                         GlassCircleButton(
@@ -287,17 +305,6 @@ struct BodyView: View {
                         .popover(isPresented: $showCooldownPopover) {
                             CooldownPopoverView(dataManager: dataManager)
                         }
-
-                        Spacer()
-
-                        // Date/feedback label (center)
-                        Text(showFeedback ? feedbackText : dateText)
-                            .font(.headline)
-                            .fontWeight(.semibold)
-                            .foregroundColor(showFeedback ? dataManager.settings.highlightColor.color : (isViewingHistory ? dataManager.settings.highlightColor.color : .primary))
-                            .allowsHitTesting(false)
-                            .animation(.easeInOut(duration: 0.3), value: showFeedback)
-                            .id(showFeedback ? feedbackText : "date")
 
                         Spacer()
 
@@ -315,7 +322,7 @@ struct BodyView: View {
 
                     Spacer()
 
-                    // Bottom row: Calendar (left), Weight (center), Swap (right)
+                    // Bottom row: Calendar (left), Dynamic Capsule (center), Swap (right)
                     HStack {
                         // Calendar button (bottom left)
                         GlassCircleButton(
@@ -328,27 +335,18 @@ struct BodyView: View {
 
                         Spacer()
 
-                        // Weight button (bottom center)
-                        Button(action: {
-                            showWeightInput = true
-                        }) {
-                            HStack(spacing: 8) {
-                                Text(weightDisplayText)
-                                    .font(.system(size: 16, weight: .semibold))
-                                    .foregroundColor(dataManager.settings.highlightColor.color)
-
-                                // Sparkline indicator
-                                WeightSparkline(
-                                    entries: Array(dataManager.weightHistory.suffix(7)),
-                                    trend: weightTrend,
-                                    color: dataManager.settings.highlightColor.color
-                                )
-                                .frame(width: 30, height: 16)
+                        // Dynamic capsule (center) - shows weight, date, or feedback
+                        DynamicCapsuleButton(
+                            mode: effectiveDisplayMode,
+                            weightText: weightDisplayText,
+                            dateText: dateText,
+                            weightEntries: Array(dataManager.weightHistory.suffix(7)),
+                            weightTrend: weightTrend,
+                            highlightColor: dataManager.settings.highlightColor.color,
+                            onWeightTap: {
+                                showWeightInput = true
                             }
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 14)
-                        }
-                        .modifier(GlassCapsuleModifier())
+                        )
 
                         Spacer()
 
@@ -403,16 +401,16 @@ struct BodyView: View {
     private func showMuscleFeedback(_ text: String) {
         feedbackTask?.cancel()
         feedbackText = text
-        withAnimation(.easeIn(duration: 0.2)) {
-            showFeedback = true
+        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+            capsuleMode = .feedback(text)
         }
 
         feedbackTask = Task {
-            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
             if !Task.isCancelled {
                 await MainActor.run {
-                    withAnimation(.easeOut(duration: 0.3)) {
-                        showFeedback = false
+                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                        capsuleMode = .weight
                     }
                 }
             }
@@ -592,6 +590,57 @@ struct GlassCapsuleModifier: ViewModifier {
                         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
                 )
         }
+    }
+}
+
+// MARK: - Dynamic Capsule Button
+
+struct DynamicCapsuleButton: View {
+    let mode: CapsuleDisplayMode
+    let weightText: String
+    let dateText: String
+    let weightEntries: [WeightEntry]
+    let weightTrend: WeightTrend
+    let highlightColor: Color
+    let onWeightTap: () -> Void
+
+    var body: some View {
+        Button(action: {
+            // Only respond to tap when showing weight
+            if case .weight = mode {
+                onWeightTap()
+            }
+        }) {
+            HStack(spacing: 8) {
+                switch mode {
+                case .weight:
+                    Text(weightText)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(highlightColor)
+
+                    WeightSparkline(
+                        entries: weightEntries,
+                        trend: weightTrend,
+                        color: highlightColor
+                    )
+                    .frame(width: 30, height: 16)
+
+                case .date:
+                    Text(dateText)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(highlightColor)
+
+                case .feedback(let text):
+                    Text(text)
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(highlightColor)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 14)
+        }
+        .modifier(GlassCapsuleModifier())
+        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: mode)
     }
 }
 
