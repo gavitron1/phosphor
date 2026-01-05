@@ -44,24 +44,31 @@ enum AppearanceMode: String, Codable, CaseIterable {
     case system = "System"
 }
 
+enum WeightUnit: String, Codable, CaseIterable {
+    case pounds = "lbs"
+    case kilograms = "kg"
+}
+
 struct UserSettings: Codable {
     var highlightColor: CodableColor
     var cooldownDays: Double
     var gender: Gender
     var appearanceMode: AppearanceMode
-    var weight: Double?  // Weight in pounds
+    var weight: Double?  // Weight in user's preferred unit
+    var weightUnit: WeightUnit
 
     // Computed property for backwards compatibility and convenience
     var darkMode: Bool {
         appearanceMode == .dark
     }
 
-    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, appearanceMode: AppearanceMode = .system, weight: Double? = nil) {
+    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, appearanceMode: AppearanceMode = .system, weight: Double? = nil, weightUnit: WeightUnit = .pounds) {
         self.highlightColor = highlightColor
         self.cooldownDays = cooldownDays
         self.gender = gender
         self.appearanceMode = appearanceMode
         self.weight = weight
+        self.weightUnit = weightUnit
     }
 
     // Custom decoding to handle migration from old darkMode bool
@@ -71,6 +78,7 @@ struct UserSettings: Codable {
         cooldownDays = try container.decode(Double.self, forKey: .cooldownDays)
         gender = try container.decode(Gender.self, forKey: .gender)
         weight = try container.decodeIfPresent(Double.self, forKey: .weight)
+        weightUnit = try container.decodeIfPresent(WeightUnit.self, forKey: .weightUnit) ?? .pounds
 
         // Try to decode new appearanceMode, fall back to old darkMode
         if let mode = try? container.decode(AppearanceMode.self, forKey: .appearanceMode) {
@@ -90,10 +98,11 @@ struct UserSettings: Codable {
         try container.encode(gender, forKey: .gender)
         try container.encode(appearanceMode, forKey: .appearanceMode)
         try container.encodeIfPresent(weight, forKey: .weight)
+        try container.encode(weightUnit, forKey: .weightUnit)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case highlightColor, cooldownDays, gender, appearanceMode, darkMode, weight
+        case highlightColor, cooldownDays, gender, appearanceMode, darkMode, weight, weightUnit
     }
 }
 

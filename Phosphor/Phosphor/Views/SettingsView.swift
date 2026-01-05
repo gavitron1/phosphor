@@ -14,6 +14,8 @@ struct SettingsView: View {
             Form {
                 genderSection
 
+                weightSection
+
                 appearanceSection
 
                 notificationSection
@@ -59,6 +61,24 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
         } header: {
             Text("Body Type")
+        }
+    }
+
+    // MARK: - Weight Section
+
+    private var weightSection: some View {
+        Section {
+            Picker("Weight Unit", selection: Binding(
+                get: { dataManager.settings.weightUnit },
+                set: { dataManager.updateWeightUnit($0) }
+            )) {
+                ForEach(WeightUnit.allCases, id: \.self) { unit in
+                    Text(unit == .pounds ? "Pounds (lbs)" : "Kilograms (kg)").tag(unit)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Weight")
         }
     }
 

@@ -1,5 +1,12 @@
 import SwiftUI
 
+enum WeightTrend {
+    case up
+    case down
+    case stable
+    case insufficient
+}
+
 struct BodyView: View {
     @ObservedObject var dataManager = DataManager.shared
     @ObservedObject var notificationManager = NotificationManager.shared
@@ -90,9 +97,28 @@ struct BodyView: View {
 
     private var weightDisplayText: String {
         if let weight = dataManager.settings.weight {
-            return String(format: "%.1f lbs", weight)
+            let unit = dataManager.settings.weightUnit.rawValue
+            return String(format: "%.1f %@", weight, unit)
         } else {
             return "Weight"
+        }
+    }
+
+    private var weightTrend: WeightTrend {
+        let entries = dataManager.weightHistory.suffix(7)
+        guard entries.count >= 2 else { return .insufficient }
+
+        let weights = entries.map { $0.weight }
+        let first = weights.first!
+        let last = weights.last!
+        let diff = last - first
+
+        if abs(diff) < 0.5 {
+            return .stable
+        } else if diff > 0 {
+            return .up
+        } else {
+            return .down
         }
     }
 
@@ -107,71 +133,68 @@ struct BodyView: View {
                 ScrollView {
                     VStack(spacing: 0) {
                         // Body avatar section (screen height)
-                        HStack(spacing: 0) {
-                            // Left spacer to balance slider width
-                            Spacer()
-                                .frame(width: 56)
-
+                        ZStack {
                             // Body centered
-                            ZStack {
-                                if daysOffset < 0 && !hasDataForSelectedDate {
-                                    VStack(spacing: 8) {
-                                        Text("No Data")
-                                            .font(.title2)
-                                            .fontWeight(.semibold)
-                                            .foregroundColor(.secondary)
-                                    }
-                                    .frame(height: geometry.size.height)
-                                } else {
-                                    TappableBodyView(
-                                        gender: dataManager.settings.gender,
-                                        side: currentSide,
-                                        highlightColor: dataManager.settings.highlightColor.color,
-                                        darkMode: effectiveDarkMode,
-                                        cooldownDays: dataManager.settings.cooldownDays,
-                                        getIntensity: { muscleGroup in
-                                            if isViewingHistory {
-                                                return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                            if daysOffset < 0 && !hasDataForSelectedDate {
+                                VStack(spacing: 8) {
+                                    Text("No Data")
+                                        .font(.title2)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.secondary)
+                                }
+                            } else {
+                                TappableBodyView(
+                                    gender: dataManager.settings.gender,
+                                    side: currentSide,
+                                    highlightColor: dataManager.settings.highlightColor.color,
+                                    darkMode: effectiveDarkMode,
+                                    cooldownDays: dataManager.settings.cooldownDays,
+                                    getIntensity: { muscleGroup in
+                                        if isViewingHistory {
+                                            return dataManager.getIntensity(for: muscleGroup, asOf: endOfDayDate)
+                                        } else {
+                                            return dataManager.getIntensity(for: muscleGroup)
+                                        }
+                                    },
+                                    onMuscleGroupTapped: { muscleGroup in
+                                        if !isViewingHistory {
+                                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
+                                            if wasRecorded {
+                                                hapticFeedbackTap()
+                                                showMuscleFeedback(muscleGroup.rawValue)
+                                                notificationManager.scheduleCooldownNotifications(
+                                                    muscleData: dataManager.muscleGroupData,
+                                                    cooldownDays: dataManager.settings.cooldownDays
+                                                )
                                             } else {
-                                                return dataManager.getIntensity(for: muscleGroup)
-                                            }
-                                        },
-                                        onMuscleGroupTapped: { muscleGroup in
-                                            if !isViewingHistory {
-                                                let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                                                if wasRecorded {
-                                                    hapticFeedbackTap()
-                                                    showMuscleFeedback(muscleGroup.rawValue)
-                                                    notificationManager.scheduleCooldownNotifications(
-                                                        muscleData: dataManager.muscleGroupData,
-                                                        cooldownDays: dataManager.settings.cooldownDays
-                                                    )
-                                                } else {
-                                                    hapticFeedbackUndo()
-                                                    showMuscleFeedback("\(muscleGroup.rawValue) Removed")
-                                                }
+                                                hapticFeedbackUndo()
+                                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
                                             }
                                         }
-                                    )
-                                    .frame(height: geometry.size.height)
+                                    }
+                                )
+                                .transaction { transaction in
+                                    transaction.animation = nil
                                 }
                             }
-                            .frame(maxWidth: .infinity)
 
-                            // Slider on the right - scrolls with body
-                            CenteredVerticalSlider(
-                                value: $daysOffset,
-                                isDragging: $isDragging,
-                                range: -7...7,
-                                highlightColor: dataManager.settings.highlightColor.color,
-                                onValueChanged: { sliderDetentFeedback() },
-                                onRelease: {
-                                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                        daysOffset = 0
+                            // Slider overlay on the right
+                            HStack {
+                                Spacer()
+                                CenteredVerticalSlider(
+                                    value: $daysOffset,
+                                    isDragging: $isDragging,
+                                    range: -7...7,
+                                    highlightColor: dataManager.settings.highlightColor.color,
+                                    onValueChanged: { sliderDetentFeedback() },
+                                    onRelease: {
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                            daysOffset = 0
+                                        }
                                     }
-                                }
-                            )
-                            .frame(width: 56, height: geometry.size.height / 3)
+                                )
+                                .frame(width: 56, height: geometry.size.height / 3)
+                            }
                         }
                         .frame(height: geometry.size.height)
 
@@ -287,8 +310,8 @@ struct BodyView: View {
                             }
                         )
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.top, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
 
                     Spacer()
 
@@ -309,13 +332,23 @@ struct BodyView: View {
                         Button(action: {
                             showWeightInput = true
                         }) {
-                            Text(weightDisplayText)
-                                .font(.system(size: 16, weight: .semibold))
-                                .foregroundColor(dataManager.settings.highlightColor.color)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 10)
+                            HStack(spacing: 8) {
+                                Text(weightDisplayText)
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundColor(dataManager.settings.highlightColor.color)
+
+                                // Sparkline indicator
+                                WeightSparkline(
+                                    entries: Array(dataManager.weightHistory.suffix(7)),
+                                    trend: weightTrend,
+                                    color: dataManager.settings.highlightColor.color
+                                )
+                                .frame(width: 30, height: 16)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
                         }
-                        .modifier(GlassEffectModifier())
+                        .modifier(GlassCapsuleModifier())
 
                         Spacer()
 
@@ -328,18 +361,19 @@ struct BodyView: View {
                             }
                         )
                     }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 8)
+                    .padding(.horizontal, 16)
+                    .padding(.bottom, 16)
                 }
                 .sheet(isPresented: $showWeightInput) {
                     WeightInputView(
                         currentWeight: dataManager.settings.weight,
+                        weightUnit: dataManager.settings.weightUnit,
                         highlightColor: dataManager.settings.highlightColor.color,
                         onSave: { weight in
                             dataManager.updateWeight(weight)
                         }
                     )
-                    .presentationDetents([.height(420)])
+                    .presentationDetents([.height(450)])
                 }
                 .sheet(isPresented: $showCalendar) {
                     CalendarView()
@@ -519,15 +553,15 @@ struct GlassCircleButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
-                .font(.system(size: 18, weight: .semibold))
+                .font(.system(size: 20, weight: .semibold))
                 .foregroundStyle(color)
-                .frame(width: 44, height: 44)
+                .frame(width: 52, height: 52)
         }
-        .modifier(GlassEffectModifier())
+        .modifier(GlassCircleModifier())
     }
 }
 
-struct GlassEffectModifier: ViewModifier {
+struct GlassCircleModifier: ViewModifier {
     func body(content: Content) -> some View {
         if #available(iOS 26.0, *) {
             content
@@ -540,6 +574,73 @@ struct GlassEffectModifier: ViewModifier {
                         .fill(.ultraThinMaterial)
                         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
                 )
+        }
+    }
+}
+
+struct GlassCapsuleModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content
+                .background(.regularMaterial, in: Capsule())
+                .glassEffect(.regular.interactive())
+        } else {
+            content
+                .background(
+                    Capsule()
+                        .fill(.ultraThinMaterial)
+                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+                )
+        }
+    }
+}
+
+// MARK: - Weight Sparkline
+
+struct WeightSparkline: View {
+    let entries: [WeightEntry]
+    let trend: WeightTrend
+    let color: Color
+
+    var body: some View {
+        GeometryReader { geometry in
+            if entries.count < 2 {
+                // Null state - show dash
+                Rectangle()
+                    .fill(color.opacity(0.3))
+                    .frame(width: geometry.size.width, height: 2)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            } else {
+                // Draw sparkline
+                let weights = entries.map { $0.weight }
+                let minWeight = weights.min() ?? 0
+                let maxWeight = weights.max() ?? 1
+                let range = maxWeight - minWeight
+                let effectiveRange = range > 0 ? range : 1
+
+                Path { path in
+                    for (index, weight) in weights.enumerated() {
+                        let x = CGFloat(index) / CGFloat(weights.count - 1) * geometry.size.width
+                        let normalizedY = (weight - minWeight) / effectiveRange
+                        let y = geometry.size.height - (normalizedY * geometry.size.height)
+
+                        if index == 0 {
+                            path.move(to: CGPoint(x: x, y: y))
+                        } else {
+                            path.addLine(to: CGPoint(x: x, y: y))
+                        }
+                    }
+                }
+                .stroke(color, lineWidth: 2)
+
+                // Trend arrow
+                if trend != .stable && trend != .insufficient {
+                    Image(systemName: trend == .up ? "arrow.up" : "arrow.down")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundColor(trend == .down ? .green : .orange)
+                        .position(x: geometry.size.width - 4, y: trend == .up ? 4 : geometry.size.height - 4)
+                }
+            }
         }
     }
 }
@@ -689,14 +790,16 @@ struct MuscleStatRow: View {
 
 struct WeightInputView: View {
     let currentWeight: Double?
+    let weightUnit: WeightUnit
     let highlightColor: Color
     let onSave: (Double?) -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var weightString: String = ""
 
-    init(currentWeight: Double?, highlightColor: Color, onSave: @escaping (Double?) -> Void) {
+    init(currentWeight: Double?, weightUnit: WeightUnit, highlightColor: Color, onSave: @escaping (Double?) -> Void) {
         self.currentWeight = currentWeight
+        self.weightUnit = weightUnit
         self.highlightColor = highlightColor
         self.onSave = onSave
         _weightString = State(initialValue: currentWeight.map { String(format: "%.1f", $0) } ?? "")
@@ -719,7 +822,7 @@ struct WeightInputView: View {
                     .padding(.top, 8)
 
                 Spacer()
-                    .frame(height: 8)
+                    .frame(height: 16)
 
                 HStack {
                     Button("Cancel") {
@@ -753,7 +856,7 @@ struct WeightInputView: View {
                 Text(displayWeight)
                     .font(.system(size: 56, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
-                Text("lbs")
+                Text(weightUnit.rawValue)
                     .font(.title3)
                     .foregroundColor(.secondary)
             }

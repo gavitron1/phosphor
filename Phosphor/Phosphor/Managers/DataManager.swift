@@ -191,6 +191,15 @@ class DataManager: ObservableObject {
         }
     }
 
+    func updateWeightUnit(_ unit: WeightUnit) {
+        settings.weightUnit = unit
+        saveLocalData()
+
+        Task {
+            await syncSettingsToCloud()
+        }
+    }
+
     func getWeight(for date: Date) -> Double? {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: date)
