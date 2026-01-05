@@ -682,14 +682,6 @@ struct WeightSparkline: View {
                     }
                 }
                 .stroke(color, lineWidth: 2)
-
-                // Trend arrow
-                if trend != .stable && trend != .insufficient {
-                    Image(systemName: trend == .up ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 8, weight: .bold))
-                        .foregroundColor(trend == .down ? .green : .orange)
-                        .position(x: geometry.size.width - 4, y: trend == .up ? 4 : geometry.size.height - 4)
-                }
             }
         }
     }
