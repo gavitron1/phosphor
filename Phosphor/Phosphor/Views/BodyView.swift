@@ -31,6 +31,9 @@ struct BodyView: View {
     @State private var capsuleMode: CapsuleDisplayMode = .weight
     @State private var feedbackTask: Task<Void, Never>?
 
+    // Exercise picker state
+    @State private var selectedMuscleForExercise: MuscleGroup?
+
     // Effective dark mode based on appearance setting and system color scheme
     private var effectiveDarkMode: Bool {
         switch dataManager.settings.appearanceMode {
@@ -190,6 +193,13 @@ struct BodyView: View {
                                                 }
                                             }
                                             // If nil, muscle is disabled - do nothing
+                                        }
+                                    },
+                                    onMuscleGroupLongPressed: { muscleGroup in
+                                        if !isViewingHistory && dataManager.isEnabled(for: muscleGroup) {
+                                            selectedMuscleForExercise = muscleGroup
+                                            let generator = UIImpactFeedbackGenerator(style: .heavy)
+                                            generator.impactOccurred()
                                         }
                                     },
                                     isMuscleEnabled: { muscleGroup in
@@ -387,6 +397,19 @@ struct BodyView: View {
                 .sheet(isPresented: $showCooldownPopover) {
                     RecoverySettingsView(dataManager: dataManager)
                 }
+                .sheet(item: $selectedMuscleForExercise) { muscleGroup in
+                    ExercisePickerSheet(
+                        muscleGroup: muscleGroup,
+                        highlightColor: dataManager.settings.highlightColor.color,
+                        recentExercises: dataManager.getRecentExercises(for: muscleGroup),
+                        onExerciseSelected: { exercise in
+                            activateExerciseMuscles(exercise)
+                            dataManager.recordExercise(exercise)
+                        }
+                    )
+                    .presentationDetents([.medium])
+                    .presentationDragIndicator(.visible)
+                }
             }
         }
         .gesture(
@@ -436,6 +459,27 @@ struct BodyView: View {
     private func sliderDetentFeedback() {
         let generator = UISelectionFeedbackGenerator()
         generator.selectionChanged()
+    }
+
+    private func activateExerciseMuscles(_ exercise: Exercise) {
+        // Activate all muscle groups associated with the exercise
+        for muscleGroup in exercise.muscleGroups {
+            if dataManager.isEnabled(for: muscleGroup) {
+                _ = dataManager.tapMuscleGroup(muscleGroup)
+            }
+        }
+
+        // Show feedback with exercise name
+        hapticFeedbackTap()
+        showMuscleFeedback(exercise.name)
+
+        // Schedule notifications for primary muscle
+        if let primaryMuscle = exercise.primaryMuscle {
+            notificationManager.scheduleCooldownNotifications(
+                muscleData: dataManager.muscleGroupData,
+                cooldownDays: dataManager.getCooldownDays(for: primaryMuscle)
+            )
+        }
     }
 }
 
@@ -697,15 +741,62 @@ struct WeightSparkline: View {
 struct RecoverySettingsView: View {
     @ObservedObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
+    @State private var useUnifiedCooldown: Bool = true
+
+    private var unifiedCooldownDays: Double {
+        // Use the global cooldown setting
+        dataManager.settings.cooldownDays
+    }
+
+    private var unifiedCooldownText: String {
+        let days = Int(unifiedCooldownDays)
+        return days == 1 ? "1 day" : "\(days) days"
+    }
 
     var body: some View {
         NavigationStack {
             List {
-                ForEach(MuscleGroup.allCases, id: \.self) { muscleGroup in
-                    MuscleGroupSettingsRow(
-                        muscleGroup: muscleGroup,
-                        dataManager: dataManager
-                    )
+                // Unified toggle section
+                Section {
+                    Toggle("Same for all muscles", isOn: $useUnifiedCooldown)
+                        .tint(dataManager.settings.highlightColor.color)
+
+                    if useUnifiedCooldown {
+                        VStack(spacing: 8) {
+                            Slider(
+                                value: Binding(
+                                    get: { unifiedCooldownDays },
+                                    set: { newValue in
+                                        dataManager.updateCooldownDays(newValue)
+                                        // Also update all individual muscle groups
+                                        for group in MuscleGroup.allCases {
+                                            dataManager.updateMuscleGroupCooldown(group, days: newValue)
+                                        }
+                                    }
+                                ),
+                                in: 1...14,
+                                step: 1
+                            )
+                            .tint(dataManager.settings.highlightColor.color)
+
+                            Text("Recovery: \(unifiedCooldownText)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+
+                // Individual muscle groups (only show when not unified)
+                if !useUnifiedCooldown {
+                    Section {
+                        ForEach(MuscleGroup.allCases, id: \.self) { muscleGroup in
+                            MuscleGroupSettingsRow(
+                                muscleGroup: muscleGroup,
+                                dataManager: dataManager
+                            )
+                        }
+                    }
                 }
             }
             .navigationTitle("Recovery Settings")
@@ -746,15 +837,8 @@ struct MuscleGroupSettingsRow: View {
                 get: { isEnabled },
                 set: { dataManager.updateMuscleGroupEnabled(muscleGroup, enabled: $0) }
             )) {
-                HStack(spacing: 12) {
-                    Image(systemName: muscleGroup.systemImage)
-                        .font(.system(size: 18))
-                        .foregroundColor(isEnabled ? dataManager.settings.highlightColor.color : .secondary)
-                        .frame(width: 28)
-
-                    Text(muscleGroup.rawValue)
-                        .foregroundColor(isEnabled ? .primary : .secondary)
-                }
+                Text(muscleGroup.rawValue)
+                    .foregroundColor(isEnabled ? .primary : .secondary)
             }
             .tint(dataManager.settings.highlightColor.color)
 
@@ -776,7 +860,6 @@ struct MuscleGroupSettingsRow: View {
                         .foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .padding(.leading, 40)
             }
         }
         .padding(.vertical, 4)
@@ -1054,6 +1137,122 @@ struct NumpadButton: View {
             .background(Color(.secondarySystemBackground))
             .cornerRadius(12)
         }
+    }
+}
+
+// MARK: - Exercise Picker Sheet
+
+struct ExercisePickerSheet: View {
+    let muscleGroup: MuscleGroup
+    let highlightColor: Color
+    let recentExercises: [Exercise]
+    let onExerciseSelected: (Exercise) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var searchText: String = ""
+
+    private var filteredExercises: [Exercise] {
+        let exercises = ExerciseDatabase.exercises(for: muscleGroup)
+        if searchText.isEmpty {
+            return exercises
+        }
+        return exercises.filter { $0.name.localizedCaseInsensitiveContains(searchText) }
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 0) {
+                // Recent exercises buttons
+                if !recentExercises.isEmpty && searchText.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(recentExercises) { exercise in
+                                Button {
+                                    onExerciseSelected(exercise)
+                                    dismiss()
+                                } label: {
+                                    Text(exercise.name)
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(highlightColor)
+                                        .foregroundColor(.white)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                    }
+                    .background(Color(.systemBackground))
+
+                    Divider()
+                }
+
+                List {
+                    ForEach(filteredExercises) { exercise in
+                        ExerciseRow(
+                            exercise: exercise,
+                            highlightColor: highlightColor,
+                            onTap: {
+                                onExerciseSelected(exercise)
+                                dismiss()
+                            }
+                        )
+                    }
+                }
+                .listStyle(.plain)
+            }
+            .searchable(text: $searchText, prompt: "Search exercises")
+            .navigationTitle(muscleGroup.rawValue)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(highlightColor)
+                }
+            }
+        }
+    }
+}
+
+struct ExerciseRow: View {
+    let exercise: Exercise
+    let highlightColor: Color
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text(exercise.name)
+                    .font(.body)
+                    .fontWeight(.medium)
+                    .foregroundColor(.primary)
+
+                // Show muscle groups as tags
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(exercise.muscleGroups, id: \.self) { muscle in
+                            Text(muscle.rawValue)
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(
+                                    Capsule()
+                                        .fill(highlightColor.opacity(0.15))
+                                )
+                                .foregroundColor(highlightColor)
+                        }
+                    }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
     }
 }
 

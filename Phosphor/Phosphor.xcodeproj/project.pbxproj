@@ -20,6 +20,7 @@
 		AE8B25672F0B90DC00B27DA7 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B25662F0B90DC00B27DA7 /* DataManager.swift */; };
 		AE8B25692F0B90E400B27DA7 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B25682F0B90E400B27DA7 /* NotificationManager.swift */; };
 		AE8B256B2F0B90EB00B27DA7 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B256A2F0B90EB00B27DA7 /* CalendarView.swift */; };
+		AE8B256D2F0C188300B27DA7 /* Exercise.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B256C2F0C188300B27DA7 /* Exercise.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +40,7 @@
 		AE8B25662F0B90DC00B27DA7 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
 		AE8B25682F0B90E400B27DA7 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		AE8B256A2F0B90EB00B27DA7 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
+		AE8B256C2F0C188300B27DA7 /* Exercise.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exercise.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -86,6 +88,7 @@
 		001G00004 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				AE8B256C2F0C188300B27DA7 /* Exercise.swift */,
 				001F00004 /* MuscleGroup.swift */,
 				001F00005 /* WorkoutData.swift */,
 			);
@@ -192,6 +195,7 @@
 				001A00005 /* WorkoutData.swift in Sources */,
 				AE41ED1B2EF87CCE0098B4EE /* BodyImageView.swift in Sources */,
 				001A00006 /* CloudKitManager.swift in Sources */,
+				AE8B256D2F0C188300B27DA7 /* Exercise.swift in Sources */,
 				001A00007 /* DataManager.swift in Sources */,
 				001A00008 /* BodyView.swift in Sources */,
 				001A00009 /* SettingsView.swift in Sources */,

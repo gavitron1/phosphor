@@ -151,6 +151,7 @@ struct TappableBodyView: View {
     let cooldownDays: Double  // Added to trigger re-render when cooldown changes
     let getIntensity: (MuscleGroup) -> Double
     let onMuscleGroupTapped: (MuscleGroup) -> Void
+    let onMuscleGroupLongPressed: (MuscleGroup) -> Void
     let isMuscleEnabled: (MuscleGroup) -> Bool
 
     @Environment(\.colorScheme) private var colorScheme
@@ -158,6 +159,7 @@ struct TappableBodyView: View {
 
     // Cache loaded images for hit testing
     @State private var muscleImages: [MuscleGroup: UIImage] = [:]
+
 
     // The base color muscles fade to (white in light mode, black in dark mode)
     private var baseColor: Color {
@@ -245,6 +247,20 @@ struct TappableBodyView: View {
                         handleTap(at: value.location, viewSize: geometry.size)
                     }
             )
+            .simultaneousGesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .sequenced(before: SpatialTapGesture())
+                    .onEnded { value in
+                        switch value {
+                        case .second(true, let tapValue):
+                            if let location = tapValue?.location {
+                                handleLongPress(at: location, viewSize: geometry.size)
+                            }
+                        default:
+                            break
+                        }
+                    }
+            )
             .onAppear {
                 viewSize = geometry.size
                 loadMuscleImages()
@@ -255,6 +271,7 @@ struct TappableBodyView: View {
     }
 
     private func loadMuscleImages() {
+        muscleImages.removeAll()
         for muscleGroup in muscleGroups {
             if let imageName = imageName(for: muscleGroup),
                let image = UIImage(named: imageName) {
@@ -268,17 +285,25 @@ struct TappableBodyView: View {
         for muscleGroup in muscleGroups.reversed() {
             if let image = muscleImages[muscleGroup],
                isNonTransparentPixel(at: point, in: image, viewSize: viewSize) {
-                // Only trigger tap if muscle is enabled
                 if isMuscleEnabled(muscleGroup) {
-                    print("HIT: \(muscleGroup.rawValue)")
                     onMuscleGroupTapped(muscleGroup)
-                } else {
-                    print("DISABLED: \(muscleGroup.rawValue)")
                 }
-                return // Stop at first hit
+                return
             }
         }
-        print("No muscle hit at \(point)")
+    }
+
+    private func handleLongPress(at point: CGPoint, viewSize: CGSize) {
+        // Check muscle groups from top to bottom (reversed order)
+        for muscleGroup in muscleGroups.reversed() {
+            if let image = muscleImages[muscleGroup],
+               isNonTransparentPixel(at: point, in: image, viewSize: viewSize) {
+                if isMuscleEnabled(muscleGroup) {
+                    onMuscleGroupLongPressed(muscleGroup)
+                }
+                return
+            }
+        }
     }
 
     private func isNonTransparentPixel(at point: CGPoint, in image: UIImage, viewSize: CGSize) -> Bool {
@@ -398,12 +423,8 @@ struct TappableMuscleLayer: View {
                     .gesture(
                         SpatialTapGesture()
                             .onEnded { value in
-                                let location = value.location
-                                if isNonTransparentPixel(at: location, in: uiImage, viewSize: geometry.size) {
-                                    print("Tapped \(imageName) at \(location) - HIT!")
+                                if isNonTransparentPixel(at: value.location, in: uiImage, viewSize: geometry.size) {
                                     onTap()
-                                } else {
-                                    print("Tapped \(imageName) at \(location) - transparent, passing through")
                                 }
                             }
                     )
@@ -669,6 +690,8 @@ extension UIColor {
         darkMode: false,
         cooldownDays: 3,
         getIntensity: { _ in 0.5 },
-        onMuscleGroupTapped: { _ in }
+        onMuscleGroupTapped: { _ in },
+        onMuscleGroupLongPressed: { _ in },
+        isMuscleEnabled: { _ in true }
     )
 }

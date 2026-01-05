@@ -18,6 +18,8 @@ struct SettingsView: View {
 
                 appearanceSection
 
+                exercisesSection
+
                 notificationSection
 
                 syncSection
@@ -111,6 +113,24 @@ struct SettingsView: View {
             .padding(.vertical, 8)
         } header: {
             Text("Appearance")
+        }
+    }
+
+    // MARK: - Exercises Section
+
+    private var exercisesSection: some View {
+        Section {
+            NavigationLink(destination: ExercisesListView(highlightColor: dataManager.settings.highlightColor.color)) {
+                HStack {
+                    Image(systemName: "dumbbell.fill")
+                        .foregroundColor(dataManager.settings.highlightColor.color)
+                    Text("Exercise Database")
+                }
+            }
+        } header: {
+            Text("Exercises")
+        } footer: {
+            Text("View all exercises and their associated muscle groups.")
         }
     }
 
@@ -343,6 +363,200 @@ struct ColorButton: View {
                 .shadow(color: color.color.opacity(0.4), radius: 4, x: 0, y: 2)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Exercises List View
+
+struct ExercisesListView: View {
+    let highlightColor: Color
+    @State private var searchText: String = ""
+    @State private var selectedCategory: ExerciseCategory?
+
+    private var categories: [ExerciseCategory] {
+        ExerciseCategory.allCases
+    }
+
+    private var filteredExercises: [Exercise] {
+        var exercises = ExerciseDatabase.exercises
+
+        // Filter by category if selected
+        if let category = selectedCategory {
+            exercises = exercises.filter { $0.category == category }
+        }
+
+        // Filter by search text
+        if !searchText.isEmpty {
+            exercises = exercises.filter { exercise in
+                exercise.name.localizedCaseInsensitiveContains(searchText) ||
+                exercise.muscleGroups.contains { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
+            }
+        }
+
+        return exercises
+    }
+
+    private var groupedExercises: [(category: ExerciseCategory, exercises: [Exercise])] {
+        let grouped = Dictionary(grouping: filteredExercises, by: { $0.category })
+        return categories.compactMap { category in
+            guard let exercises = grouped[category], !exercises.isEmpty else { return nil }
+            return (category: category, exercises: exercises)
+        }
+    }
+
+    var body: some View {
+        List {
+            // Category filter
+            Section {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        CategoryChip(
+                            title: "All",
+                            isSelected: selectedCategory == nil,
+                            color: highlightColor,
+                            action: { selectedCategory = nil }
+                        )
+
+                        ForEach(categories, id: \.self) { category in
+                            CategoryChip(
+                                title: category.rawValue,
+                                isSelected: selectedCategory == category,
+                                color: highlightColor,
+                                action: { selectedCategory = category }
+                            )
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
+
+            // Exercises grouped by category
+            ForEach(groupedExercises, id: \.category) { group in
+                Section {
+                    ForEach(group.exercises) { exercise in
+                        ExerciseDetailRow(exercise: exercise, highlightColor: highlightColor)
+                    }
+                } header: {
+                    Text(group.category.rawValue)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .searchable(text: $searchText, prompt: "Search exercises or muscles")
+        .navigationTitle("Exercises")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct CategoryChip: View {
+    let title: String
+    let isSelected: Bool
+    let color: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule()
+                        .fill(isSelected ? color : Color(.secondarySystemBackground))
+                )
+                .foregroundColor(isSelected ? .white : .primary)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+struct ExerciseDetailRow: View {
+    let exercise: Exercise
+    let highlightColor: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(exercise.name)
+                .font(.body)
+                .fontWeight(.medium)
+
+            // Muscle groups as tags
+            FlowLayout(spacing: 6) {
+                ForEach(exercise.muscleGroups, id: \.self) { muscle in
+                    MuscleTag(muscle: muscle, highlightColor: highlightColor)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct MuscleTag: View {
+    let muscle: MuscleGroup
+    let highlightColor: Color
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: muscle.systemImage)
+                .font(.system(size: 10))
+            Text(muscle.rawValue)
+                .font(.caption2)
+                .fontWeight(.medium)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            Capsule()
+                .fill(highlightColor.opacity(0.15))
+        )
+        .foregroundColor(highlightColor)
+    }
+}
+
+// Simple flow layout for wrapping tags
+struct FlowLayout: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let result = computeLayout(proposal: proposal, subviews: subviews)
+        return result.size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        let result = computeLayout(proposal: proposal, subviews: subviews)
+        for (index, position) in result.positions.enumerated() {
+            subviews[index].place(at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y), proposal: .unspecified)
+        }
+    }
+
+    private func computeLayout(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        let maxWidth = proposal.width ?? .infinity
+        var positions: [CGPoint] = []
+        var currentX: CGFloat = 0
+        var currentY: CGFloat = 0
+        var lineHeight: CGFloat = 0
+        var totalHeight: CGFloat = 0
+        var totalWidth: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+
+            if currentX + size.width > maxWidth && currentX > 0 {
+                currentX = 0
+                currentY += lineHeight + spacing
+                lineHeight = 0
+            }
+
+            positions.append(CGPoint(x: currentX, y: currentY))
+            currentX += size.width + spacing
+            lineHeight = max(lineHeight, size.height)
+            totalWidth = max(totalWidth, currentX - spacing)
+            totalHeight = currentY + lineHeight
+        }
+
+        return (CGSize(width: totalWidth, height: totalHeight), positions)
     }
 }
 

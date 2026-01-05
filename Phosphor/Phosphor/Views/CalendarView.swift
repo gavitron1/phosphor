@@ -117,6 +117,35 @@ struct CalendarView: View {
                                 .foregroundColor(.secondary)
                         }
                     }
+
+                    // Exercises done on selected date
+                    let exercises = dataManager.getExercises(for: selectedDate)
+                    if !exercises.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Exercises")
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            FlowLayout(spacing: 6) {
+                                ForEach(exercises) { record in
+                                    Text(record.exerciseName)
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(dataManager.settings.highlightColor.color.opacity(0.15))
+                                        )
+                                        .foregroundColor(dataManager.settings.highlightColor.color)
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                    }
                 }
 
             Spacer()

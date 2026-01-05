@@ -205,3 +205,19 @@ struct WeightEntry: Codable, Identifiable {
         self.date = date
     }
 }
+
+struct ExerciseRecord: Codable, Identifiable {
+    let id: UUID
+    let exerciseId: String
+    let exerciseName: String
+    let muscleGroups: [MuscleGroup]
+    let date: Date
+
+    init(exercise: Exercise, date: Date = Date()) {
+        self.id = UUID()
+        self.exerciseId = exercise.id
+        self.exerciseName = exercise.name
+        self.muscleGroups = exercise.muscleGroups
+        self.date = date
+    }
+}

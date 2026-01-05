@@ -9,12 +9,14 @@ class DataManager: ObservableObject {
     @Published var muscleGroupData: [MuscleGroup: MuscleGroupData] = [:]
     @Published var settings: UserSettings = UserSettings()
     @Published var weightHistory: [WeightEntry] = []
+    @Published var exerciseHistory: [ExerciseRecord] = []
     @Published var isLoading = false
     @Published var syncError: String?
 
     private let muscleDataKey = "muscleGroupData"
     private let settingsKey = "userSettings"
     private let weightHistoryKey = "weightHistory"
+    private let exerciseHistoryKey = "exerciseHistory"
     private let cloudKitManager = CloudKitManager.shared
 
     private var syncTimer: Timer?
@@ -55,6 +57,12 @@ class DataManager: ObservableObject {
            let decoded = try? JSONDecoder().decode([WeightEntry].self, from: data) {
             weightHistory = decoded
         }
+
+        // Load exercise history
+        if let data = UserDefaults.standard.data(forKey: exerciseHistoryKey),
+           let decoded = try? JSONDecoder().decode([ExerciseRecord].self, from: data) {
+            exerciseHistory = decoded
+        }
     }
 
     private func saveLocalData() {
@@ -69,6 +77,10 @@ class DataManager: ObservableObject {
 
         if let encoded = try? JSONEncoder().encode(weightHistory) {
             UserDefaults.standard.set(encoded, forKey: weightHistoryKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(exerciseHistory) {
+            UserDefaults.standard.set(encoded, forKey: exerciseHistoryKey)
         }
     }
 
@@ -315,6 +327,47 @@ class DataManager: ObservableObject {
         }
 
         return entriesForDay.last?.weight
+    }
+
+    // MARK: - Exercise History
+
+    func recordExercise(_ exercise: Exercise) {
+        let record = ExerciseRecord(exercise: exercise)
+        exerciseHistory.append(record)
+        saveLocalData()
+    }
+
+    /// Get the 3 most recently used exercises for a muscle group
+    func getRecentExercises(for muscleGroup: MuscleGroup) -> [Exercise] {
+        // Filter exercises that work this muscle group, get unique by exerciseId, take last 3
+        var seen = Set<String>()
+        var recent: [String] = []
+
+        for record in exerciseHistory.reversed() {
+            if record.muscleGroups.contains(muscleGroup) && !seen.contains(record.exerciseId) {
+                seen.insert(record.exerciseId)
+                recent.append(record.exerciseId)
+                if recent.count >= 3 {
+                    break
+                }
+            }
+        }
+
+        // Convert IDs back to Exercise objects
+        return recent.compactMap { id in
+            ExerciseDatabase.exercises.first { $0.id == id }
+        }
+    }
+
+    /// Get exercises done on a specific date
+    func getExercises(for date: Date) -> [ExerciseRecord] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+
+        return exerciseHistory.filter { record in
+            record.date >= startOfDay && record.date < endOfDay
+        }
     }
 
     // MARK: - iCloud Sync
