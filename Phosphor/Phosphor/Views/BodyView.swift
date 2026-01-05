@@ -616,7 +616,7 @@ struct DynamicCapsuleButton: View {
                 switch mode {
                 case .weight:
                     Text(weightText)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .foregroundColor(highlightColor)
 
                     WeightSparkline(
@@ -628,12 +628,12 @@ struct DynamicCapsuleButton: View {
 
                 case .date:
                     Text(dateText)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .foregroundColor(highlightColor)
 
                 case .feedback(let text):
                     Text(text)
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.body.weight(.semibold))
                         .foregroundColor(highlightColor)
                 }
             }
