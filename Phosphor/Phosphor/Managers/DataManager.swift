@@ -183,6 +183,7 @@ class DataManager: ObservableObject {
     }
 
     func updateWeight(_ weight: Double?) {
+        objectWillChange.send()  // Ensure view updates
         settings.weight = weight
 
         // Also log to weight history
