@@ -111,7 +111,7 @@ struct BodyView: View {
     }
 
     private var weightTrend: WeightTrend {
-        let entries = dataManager.weightHistory.suffix(7)
+        let entries = dataManager.getDailyWeightHistory().suffix(7)
         guard entries.count >= 2 else { return .insufficient }
 
         let weights = entries.map { $0.weight }
@@ -341,7 +341,7 @@ struct BodyView: View {
                             mode: effectiveDisplayMode,
                             weightText: weightDisplayText,
                             dateText: dateText,
-                            weightEntries: Array(dataManager.weightHistory.suffix(7)),
+                            weightEntries: Array(dataManager.getDailyWeightHistory().suffix(7)),
                             weightTrend: weightTrend,
                             highlightColor: dataManager.settings.highlightColor.color,
                             onWeightTap: {

@@ -186,14 +186,44 @@ class DataManager: ObservableObject {
         objectWillChange.send()  // Ensure view updates
         settings.weight = weight
 
-        // Also log to weight history
+        // Also log to weight history (one entry per day)
         if let weight = weight {
+            let calendar = Calendar.current
+            let today = calendar.startOfDay(for: Date())
+
+            // Remove any existing entry for today
+            weightHistory.removeAll { entry in
+                calendar.startOfDay(for: entry.date) == today
+            }
+
+            // Add the new entry
             let entry = WeightEntry(weight: weight)
             weightHistory.append(entry)
         }
 
         saveLocalData()
         debouncedSyncSettingsToCloud()
+    }
+
+    /// Returns weight history with only one entry per day (the last one for each day)
+    func getDailyWeightHistory() -> [WeightEntry] {
+        let calendar = Calendar.current
+        var dailyEntries: [Date: WeightEntry] = [:]
+
+        for entry in weightHistory {
+            let dayStart = calendar.startOfDay(for: entry.date)
+            // Always take the latest entry for each day
+            if let existing = dailyEntries[dayStart] {
+                if entry.date > existing.date {
+                    dailyEntries[dayStart] = entry
+                }
+            } else {
+                dailyEntries[dayStart] = entry
+            }
+        }
+
+        // Sort by date and return
+        return dailyEntries.values.sorted { $0.date < $1.date }
     }
 
     func updateWeightUnit(_ unit: WeightUnit) {
