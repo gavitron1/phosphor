@@ -151,6 +151,7 @@ struct TappableBodyView: View {
     let cooldownDays: Double  // Added to trigger re-render when cooldown changes
     let getIntensity: (MuscleGroup) -> Double
     let onMuscleGroupTapped: (MuscleGroup) -> Void
+    let isMuscleEnabled: (MuscleGroup) -> Bool
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewSize: CGSize = .zero
@@ -163,8 +164,19 @@ struct TappableBodyView: View {
         darkMode ? .black : .white
     }
 
+    // Gray color for disabled muscles
+    private var disabledColor: Color {
+        Color.gray.opacity(0.4)
+    }
+
     // Blend highlight color with base color based on intensity
-    private func muscleColor(for intensity: Double) -> Color {
+    private func muscleColor(for muscleGroup: MuscleGroup) -> Color {
+        // If disabled, show gray
+        guard isMuscleEnabled(muscleGroup) else {
+            return disabledColor
+        }
+
+        let intensity = getIntensity(muscleGroup)
         if intensity <= 0 {
             return baseColor
         }
@@ -206,11 +218,10 @@ struct TappableBodyView: View {
                 ForEach(muscleGroups, id: \.self) { muscleGroup in
                     if let imageName = imageName(for: muscleGroup),
                        let uiImage = UIImage(named: imageName) {
-                        let intensity = getIntensity(muscleGroup)
                         Image(uiImage: uiImage.withRenderingMode(.alwaysTemplate))
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .foregroundColor(muscleColor(for: intensity))
+                            .foregroundColor(muscleColor(for: muscleGroup))
                     }
                 }
 
@@ -257,8 +268,13 @@ struct TappableBodyView: View {
         for muscleGroup in muscleGroups.reversed() {
             if let image = muscleImages[muscleGroup],
                isNonTransparentPixel(at: point, in: image, viewSize: viewSize) {
-                print("HIT: \(muscleGroup.rawValue)")
-                onMuscleGroupTapped(muscleGroup)
+                // Only trigger tap if muscle is enabled
+                if isMuscleEnabled(muscleGroup) {
+                    print("HIT: \(muscleGroup.rawValue)")
+                    onMuscleGroupTapped(muscleGroup)
+                } else {
+                    print("DISABLED: \(muscleGroup.rawValue)")
+                }
                 return // Stop at first hit
             }
         }

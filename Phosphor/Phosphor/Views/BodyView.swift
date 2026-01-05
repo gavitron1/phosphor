@@ -176,19 +176,24 @@ struct BodyView: View {
                                     },
                                     onMuscleGroupTapped: { muscleGroup in
                                         if !isViewingHistory {
-                                            let wasRecorded = dataManager.tapMuscleGroup(muscleGroup)
-                                            if wasRecorded {
-                                                hapticFeedbackTap()
-                                                showMuscleFeedback(muscleGroup.rawValue)
-                                                notificationManager.scheduleCooldownNotifications(
-                                                    muscleData: dataManager.muscleGroupData,
-                                                    cooldownDays: dataManager.settings.cooldownDays
-                                                )
-                                            } else {
-                                                hapticFeedbackUndo()
-                                                showMuscleFeedback("\(muscleGroup.rawValue) Removed")
+                                            if let wasRecorded = dataManager.tapMuscleGroup(muscleGroup) {
+                                                if wasRecorded {
+                                                    hapticFeedbackTap()
+                                                    showMuscleFeedback(muscleGroup.rawValue)
+                                                    notificationManager.scheduleCooldownNotifications(
+                                                        muscleData: dataManager.muscleGroupData,
+                                                        cooldownDays: dataManager.getCooldownDays(for: muscleGroup)
+                                                    )
+                                                } else {
+                                                    hapticFeedbackUndo()
+                                                    showMuscleFeedback("\(muscleGroup.rawValue) Removed")
+                                                }
                                             }
+                                            // If nil, muscle is disabled - do nothing
                                         }
+                                    },
+                                    isMuscleEnabled: { muscleGroup in
+                                        dataManager.isEnabled(for: muscleGroup)
                                     }
                                 )
                                 .offset(y: -32)
@@ -295,7 +300,7 @@ struct BodyView: View {
                 VStack {
                     // Top row: Clock (left), Settings (right)
                     HStack {
-                        // Clock button (top left)
+                        // Clock button (top left) - Recovery settings
                         GlassCircleButton(
                             systemName: "clock.fill",
                             color: dataManager.settings.highlightColor.color,
@@ -303,9 +308,6 @@ struct BodyView: View {
                                 showCooldownPopover = true
                             }
                         )
-                        .popover(isPresented: $showCooldownPopover) {
-                            CooldownPopoverView(dataManager: dataManager)
-                        }
 
                         Spacer()
 
@@ -381,6 +383,9 @@ struct BodyView: View {
                     NavigationStack {
                         SettingsView()
                     }
+                }
+                .sheet(isPresented: $showCooldownPopover) {
+                    RecoverySettingsView(dataManager: dataManager)
                 }
             }
         }
@@ -687,53 +692,94 @@ struct WeightSparkline: View {
     }
 }
 
-// MARK: - Cooldown Popover View
+// MARK: - Recovery Settings View
 
-struct CooldownPopoverView: View {
+struct RecoverySettingsView: View {
+    @ObservedObject var dataManager: DataManager
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                ForEach(MuscleGroup.allCases, id: \.self) { muscleGroup in
+                    MuscleGroupSettingsRow(
+                        muscleGroup: muscleGroup,
+                        dataManager: dataManager
+                    )
+                }
+            }
+            .navigationTitle("Recovery Settings")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                    .foregroundColor(dataManager.settings.highlightColor.color)
+                }
+            }
+        }
+    }
+}
+
+struct MuscleGroupSettingsRow: View {
+    let muscleGroup: MuscleGroup
     @ObservedObject var dataManager: DataManager
 
+    private var isEnabled: Bool {
+        dataManager.muscleGroupData[muscleGroup]?.isEnabled ?? true
+    }
+
+    private var cooldownDays: Double {
+        dataManager.muscleGroupData[muscleGroup]?.cooldownDays ?? 3.0
+    }
+
     private var cooldownText: String {
-        let days = Int(dataManager.settings.cooldownDays)
+        let days = Int(cooldownDays)
         return days == 1 ? "1 day" : "\(days) days"
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Recovery Time")
-                .font(.headline)
-                .fontWeight(.semibold)
+        VStack(alignment: .leading, spacing: 12) {
+            // Toggle row
+            Toggle(isOn: Binding(
+                get: { isEnabled },
+                set: { dataManager.updateMuscleGroupEnabled(muscleGroup, enabled: $0) }
+            )) {
+                HStack(spacing: 12) {
+                    Image(systemName: muscleGroup.systemImage)
+                        .font(.system(size: 18))
+                        .foregroundColor(isEnabled ? dataManager.settings.highlightColor.color : .secondary)
+                        .frame(width: 28)
 
-            // Slider with tickmarks
-            VStack(spacing: 8) {
-                // Tickmarks
-                HStack {
-                    ForEach(1...7, id: \.self) { day in
-                        Text("\(day)")
-                            .font(.caption2)
-                            .foregroundColor(Int(dataManager.settings.cooldownDays) == day ? dataManager.settings.highlightColor.color : .secondary)
-                            .frame(maxWidth: .infinity)
-                    }
+                    Text(muscleGroup.rawValue)
+                        .foregroundColor(isEnabled ? .primary : .secondary)
                 }
-
-                // Slider
-                Slider(
-                    value: Binding(
-                        get: { dataManager.settings.cooldownDays },
-                        set: { dataManager.updateCooldownDays($0) }
-                    ),
-                    in: 1...7,
-                    step: 1
-                )
-                .tint(dataManager.settings.highlightColor.color)
             }
+            .tint(dataManager.settings.highlightColor.color)
 
-            Text("Muscles will fully recover after \(cooldownText)")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            // Slider (only show when enabled)
+            if isEnabled {
+                VStack(spacing: 4) {
+                    Slider(
+                        value: Binding(
+                            get: { cooldownDays },
+                            set: { dataManager.updateMuscleGroupCooldown(muscleGroup, days: $0) }
+                        ),
+                        in: 1...14,
+                        step: 1
+                    )
+                    .tint(dataManager.settings.highlightColor.color)
+
+                    Text("Recovery: \(cooldownText)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .padding(.leading, 40)
+            }
         }
-        .padding(20)
-        .frame(width: 280)
-        .presentationCompactAdaptation(.popover)
+        .padding(.vertical, 4)
     }
 }
 

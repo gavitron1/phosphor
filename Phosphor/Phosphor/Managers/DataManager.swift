@@ -75,10 +75,13 @@ class DataManager: ObservableObject {
     // MARK: - Muscle Group Actions
 
     /// Tap a muscle group. If tapped again within 10 seconds, undo the tap.
-    /// Returns true if the tap was recorded, false if it was undone.
+    /// Returns true if the tap was recorded, false if it was undone, nil if disabled.
     @discardableResult
-    func tapMuscleGroup(_ group: MuscleGroup) -> Bool {
+    func tapMuscleGroup(_ group: MuscleGroup) -> Bool? {
         var data = muscleGroupData[group] ?? MuscleGroupData(muscleGroup: group)
+
+        // Check if muscle group is enabled
+        guard data.isEnabled else { return nil }
 
         // Check if this is an undo (tapped again within 10 seconds)
         if let lastTapped = data.lastTappedDate {
@@ -89,7 +92,9 @@ class DataManager: ObservableObject {
                     muscleGroup: group,
                     lastTappedDate: data.previousTappedDate,  // Restore previous date
                     previousTappedDate: nil,  // Clear the undo state
-                    tapCount: max(0, data.tapCount - 1)
+                    tapCount: max(0, data.tapCount - 1),
+                    cooldownDays: data.cooldownDays,
+                    isEnabled: data.isEnabled
                 )
                 muscleGroupData[group] = data
                 saveLocalData()
@@ -103,7 +108,9 @@ class DataManager: ObservableObject {
             muscleGroup: group,
             lastTappedDate: Date(),
             previousTappedDate: data.lastTappedDate,  // Save old date for potential undo
-            tapCount: data.tapCount + 1
+            tapCount: data.tapCount + 1,
+            cooldownDays: data.cooldownDays,
+            isEnabled: data.isEnabled
         )
         muscleGroupData[group] = data
         saveLocalData()
@@ -135,12 +142,20 @@ class DataManager: ObservableObject {
 
     func getIntensity(for group: MuscleGroup) -> Double {
         guard let data = muscleGroupData[group] else { return 0 }
-        return data.intensity(cooldownDays: settings.cooldownDays)
+        return data.intensity()  // Uses per-muscle-group cooldown
     }
 
     func getIntensity(for group: MuscleGroup, asOf date: Date) -> Double {
         guard let data = muscleGroupData[group] else { return 0 }
-        return data.intensity(cooldownDays: settings.cooldownDays, asOf: date)
+        return data.intensity(asOf: date)  // Uses per-muscle-group cooldown
+    }
+
+    func isEnabled(for group: MuscleGroup) -> Bool {
+        muscleGroupData[group]?.isEnabled ?? true
+    }
+
+    func getCooldownDays(for group: MuscleGroup) -> Double {
+        muscleGroupData[group]?.cooldownDays ?? 3.0
     }
 
     func getTapCount(for group: MuscleGroup) -> Int {
@@ -154,6 +169,38 @@ class DataManager: ObservableObject {
 
     func getMaxTapCount() -> Int {
         muscleGroupData.values.map { $0.tapCount }.max() ?? 1
+    }
+
+    // MARK: - Per-Muscle-Group Settings
+
+    func updateMuscleGroupEnabled(_ group: MuscleGroup, enabled: Bool) {
+        guard var data = muscleGroupData[group] else { return }
+        data = MuscleGroupData(
+            muscleGroup: group,
+            lastTappedDate: data.lastTappedDate,
+            previousTappedDate: data.previousTappedDate,
+            tapCount: data.tapCount,
+            cooldownDays: data.cooldownDays,
+            isEnabled: enabled
+        )
+        muscleGroupData[group] = data
+        saveLocalData()
+        debouncedSyncToCloud()
+    }
+
+    func updateMuscleGroupCooldown(_ group: MuscleGroup, days: Double) {
+        guard var data = muscleGroupData[group] else { return }
+        data = MuscleGroupData(
+            muscleGroup: group,
+            lastTappedDate: data.lastTappedDate,
+            previousTappedDate: data.previousTappedDate,
+            tapCount: data.tapCount,
+            cooldownDays: days,
+            isEnabled: data.isEnabled
+        )
+        muscleGroupData[group] = data
+        saveLocalData()
+        debouncedSyncToCloud()
     }
 
     // MARK: - Settings

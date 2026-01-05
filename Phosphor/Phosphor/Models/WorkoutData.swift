@@ -7,16 +7,35 @@ struct MuscleGroupData: Codable, Identifiable {
     var lastTappedDate: Date?
     var previousTappedDate: Date?  // For undo - stores the date before the most recent tap
     var tapCount: Int
+    var cooldownDays: Double  // Per-muscle-group recovery time (1-14 days)
+    var isEnabled: Bool  // Whether this muscle group can be tapped
 
-    init(muscleGroup: MuscleGroup, lastTappedDate: Date? = nil, previousTappedDate: Date? = nil, tapCount: Int = 0) {
+    init(muscleGroup: MuscleGroup, lastTappedDate: Date? = nil, previousTappedDate: Date? = nil, tapCount: Int = 0, cooldownDays: Double = 3.0, isEnabled: Bool = true) {
         self.muscleGroup = muscleGroup
         self.lastTappedDate = lastTappedDate
         self.previousTappedDate = previousTappedDate
         self.tapCount = tapCount
+        self.cooldownDays = cooldownDays
+        self.isEnabled = isEnabled
     }
 
-    func intensity(cooldownDays: Double) -> Double {
-        guard let lastTapped = lastTappedDate else { return 0 }
+    // Custom decoding to handle migration from old data without cooldownDays/isEnabled
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        muscleGroup = try container.decode(MuscleGroup.self, forKey: .muscleGroup)
+        lastTappedDate = try container.decodeIfPresent(Date.self, forKey: .lastTappedDate)
+        previousTappedDate = try container.decodeIfPresent(Date.self, forKey: .previousTappedDate)
+        tapCount = try container.decode(Int.self, forKey: .tapCount)
+        cooldownDays = try container.decodeIfPresent(Double.self, forKey: .cooldownDays) ?? 3.0
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case muscleGroup, lastTappedDate, previousTappedDate, tapCount, cooldownDays, isEnabled
+    }
+
+    func intensity() -> Double {
+        guard isEnabled, let lastTapped = lastTappedDate else { return 0 }
         let elapsed = Date().timeIntervalSince(lastTapped)
         let cooldownSeconds = cooldownDays * 24 * 60 * 60
         let remaining = max(0, 1 - (elapsed / cooldownSeconds))
@@ -24,9 +43,27 @@ struct MuscleGroupData: Codable, Identifiable {
     }
 
     /// Calculate intensity as it would have been at a specific reference date
-    func intensity(cooldownDays: Double, asOf referenceDate: Date) -> Double {
-        guard let lastTapped = lastTappedDate else { return 0 }
+    func intensity(asOf referenceDate: Date) -> Double {
+        guard isEnabled, let lastTapped = lastTappedDate else { return 0 }
         // If the tap happened after the reference date, it wouldn't have existed yet
+        if lastTapped > referenceDate { return 0 }
+        let elapsed = referenceDate.timeIntervalSince(lastTapped)
+        let cooldownSeconds = cooldownDays * 24 * 60 * 60
+        let remaining = max(0, 1 - (elapsed / cooldownSeconds))
+        return remaining
+    }
+
+    // Keep old methods for backward compatibility
+    func intensity(cooldownDays: Double) -> Double {
+        guard isEnabled, let lastTapped = lastTappedDate else { return 0 }
+        let elapsed = Date().timeIntervalSince(lastTapped)
+        let cooldownSeconds = cooldownDays * 24 * 60 * 60
+        let remaining = max(0, 1 - (elapsed / cooldownSeconds))
+        return remaining
+    }
+
+    func intensity(cooldownDays: Double, asOf referenceDate: Date) -> Double {
+        guard isEnabled, let lastTapped = lastTappedDate else { return 0 }
         if lastTapped > referenceDate { return 0 }
         let elapsed = referenceDate.timeIntervalSince(lastTapped)
         let cooldownSeconds = cooldownDays * 24 * 60 * 60
