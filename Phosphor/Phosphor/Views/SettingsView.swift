@@ -14,6 +14,8 @@ struct SettingsView: View {
             Form {
                 genderSection
 
+                weightUnitSection
+
                 highlightColorSection
 
                 cooldownSection
@@ -72,6 +74,24 @@ struct SettingsView: View {
             .pickerStyle(.segmented)
         } header: {
             Text("Body Type")
+        }
+    }
+
+    // MARK: - Weight Unit Section
+
+    private var weightUnitSection: some View {
+        Section {
+            Picker("Weight Unit", selection: Binding(
+                get: { dataManager.settings.weightUnit },
+                set: { dataManager.updateWeightUnit($0) }
+            )) {
+                ForEach(WeightUnit.allCases, id: \.self) { unit in
+                    Text(unit.displayName).tag(unit)
+                }
+            }
+            .pickerStyle(.segmented)
+        } header: {
+            Text("Weight Unit")
         }
     }
 

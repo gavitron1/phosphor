@@ -3,12 +3,15 @@ import SwiftUI
 struct StatsView: View {
     @ObservedObject var dataManager = DataManager.shared
     @Environment(\.dismiss) private var dismiss
+    @State private var displayedMonth: Date = Date()
 
     var body: some View {
         ZStack(alignment: .topLeading) {
             ScrollView {
                 VStack(spacing: 16) {
                     summaryCard
+
+                    calendarSection
 
                     statsListView
                 }
@@ -87,6 +90,111 @@ struct StatsView: View {
     private var leastTrained: MuscleGroupData? {
         let sorted = dataManager.getSortedMuscleGroups().filter { $0.tapCount > 0 }
         return sorted.last
+    }
+
+    // MARK: - Calendar Section
+
+    private var calendarSection: some View {
+        VStack(spacing: 12) {
+            // Month navigation
+            HStack {
+                Button(action: previousMonth) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(dataManager.settings.highlightColor.color)
+                }
+
+                Spacer()
+
+                Text(monthYearString)
+                    .font(.headline)
+
+                Spacer()
+
+                Button(action: nextMonth) {
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(dataManager.settings.highlightColor.color)
+                }
+            }
+            .padding(.horizontal, 8)
+
+            // Day headers
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                    Text(day)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            // Calendar days
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 4) {
+                ForEach(calendarDays, id: \.self) { date in
+                    if let date = date {
+                        CalendarDayView(
+                            date: date,
+                            weight: dataManager.weight(for: date),
+                            weightUnit: dataManager.settings.weightUnit,
+                            isToday: Calendar.current.isDateInToday(date),
+                            highlightColor: dataManager.settings.highlightColor.color
+                        )
+                    } else {
+                        Color.clear
+                            .frame(height: 50)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(.systemBackground))
+                .shadow(color: Color.black.opacity(0.05), radius: 8, x: 0, y: 2)
+        )
+    }
+
+    private var monthYearString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMMM yyyy"
+        return formatter.string(from: displayedMonth)
+    }
+
+    private var calendarDays: [Date?] {
+        let calendar = Calendar.current
+        let startOfMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: displayedMonth))!
+        let range = calendar.range(of: .day, in: .month, for: startOfMonth)!
+
+        let firstWeekday = calendar.component(.weekday, from: startOfMonth)
+        let leadingEmptyDays = firstWeekday - 1
+
+        var days: [Date?] = Array(repeating: nil, count: leadingEmptyDays)
+
+        for day in range {
+            if let date = calendar.date(byAdding: .day, value: day - 1, to: startOfMonth) {
+                days.append(date)
+            }
+        }
+
+        // Add trailing empty days to complete the grid
+        while days.count % 7 != 0 {
+            days.append(nil)
+        }
+
+        return days
+    }
+
+    private func previousMonth() {
+        if let newDate = Calendar.current.date(byAdding: .month, value: -1, to: displayedMonth) {
+            displayedMonth = newDate
+        }
+    }
+
+    private func nextMonth() {
+        if let newDate = Calendar.current.date(byAdding: .month, value: 1, to: displayedMonth) {
+            displayedMonth = newDate
+        }
     }
 
     // MARK: - Stats List
@@ -212,6 +320,45 @@ struct MuscleStatRow: View {
         guard maxCount > 0 else { return 0 }
         let percentage = CGFloat(data.tapCount) / CGFloat(maxCount)
         return totalWidth * percentage
+    }
+}
+
+// MARK: - Calendar Day View
+
+struct CalendarDayView: View {
+    let date: Date
+    let weight: WeightEntry?
+    let weightUnit: WeightUnit
+    let isToday: Bool
+    let highlightColor: Color
+
+    private var dayNumber: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "d"
+        return formatter.string(from: date)
+    }
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(dayNumber)
+                .font(.system(size: 14, weight: isToday ? .bold : .regular))
+                .foregroundColor(isToday ? highlightColor : .primary)
+
+            if let weight = weight {
+                Text(String(format: "%.0f", weight.weight))
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(.secondary)
+            } else {
+                Text(" ")
+                    .font(.system(size: 9))
+            }
+        }
+        .frame(height: 40)
+        .frame(maxWidth: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isToday ? highlightColor.opacity(0.1) : Color.clear)
+        )
     }
 }
 

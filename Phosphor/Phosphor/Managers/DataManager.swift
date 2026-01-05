@@ -8,11 +8,13 @@ class DataManager: ObservableObject {
 
     @Published var muscleGroupData: [MuscleGroup: MuscleGroupData] = [:]
     @Published var settings: UserSettings = UserSettings()
+    @Published var weightEntries: [WeightEntry] = []
     @Published var isLoading = false
     @Published var syncError: String?
 
     private let muscleDataKey = "muscleGroupData"
     private let settingsKey = "userSettings"
+    private let weightEntriesKey = "weightEntries"
     private let cloudKitManager = CloudKitManager.shared
 
     private var syncTimer: Timer?
@@ -45,6 +47,12 @@ class DataManager: ObservableObject {
            let decoded = try? JSONDecoder().decode(UserSettings.self, from: data) {
             settings = decoded
         }
+
+        // Load weight entries
+        if let data = UserDefaults.standard.data(forKey: weightEntriesKey),
+           let decoded = try? JSONDecoder().decode([WeightEntry].self, from: data) {
+            weightEntries = decoded.sorted { $0.date > $1.date }
+        }
     }
 
     private func saveLocalData() {
@@ -55,6 +63,10 @@ class DataManager: ObservableObject {
 
         if let encoded = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(encoded, forKey: settingsKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(weightEntries) {
+            UserDefaults.standard.set(encoded, forKey: weightEntriesKey)
         }
     }
 
@@ -121,6 +133,39 @@ class DataManager: ObservableObject {
         Task {
             await syncSettingsToCloud()
         }
+    }
+
+    func updateWeightUnit(_ unit: WeightUnit) {
+        settings.weightUnit = unit
+        saveLocalData()
+
+        Task {
+            await syncSettingsToCloud()
+        }
+    }
+
+    // MARK: - Weight Tracking
+
+    func addWeight(_ weight: Double) {
+        let entry = WeightEntry(weight: weight)
+        weightEntries.insert(entry, at: 0)
+        saveLocalData()
+    }
+
+    var latestWeight: WeightEntry? {
+        weightEntries.first
+    }
+
+    func weight(for date: Date) -> WeightEntry? {
+        let targetDate = Calendar.current.startOfDay(for: date)
+        return weightEntries.first { entry in
+            Calendar.current.startOfDay(for: entry.date) == targetDate
+        }
+    }
+
+    func formattedWeight(_ weight: Double) -> String {
+        let formatted = String(format: "%.1f", weight)
+        return "\(formatted) \(settings.weightUnit.rawValue)"
     }
 
     // MARK: - iCloud Sync
@@ -198,10 +243,12 @@ class DataManager: ObservableObject {
             muscleGroupData[group] = MuscleGroupData(muscleGroup: group)
         }
         settings = UserSettings()
+        weightEntries = []
 
         // Clear UserDefaults
         UserDefaults.standard.removeObject(forKey: muscleDataKey)
         UserDefaults.standard.removeObject(forKey: settingsKey)
+        UserDefaults.standard.removeObject(forKey: weightEntriesKey)
 
         saveLocalData()
     }

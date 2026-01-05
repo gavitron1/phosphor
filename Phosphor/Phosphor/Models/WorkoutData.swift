@@ -31,11 +31,13 @@ struct UserSettings: Codable {
     var highlightColor: CodableColor
     var cooldownDays: Double
     var gender: Gender
+    var weightUnit: WeightUnit
 
-    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male) {
+    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, weightUnit: WeightUnit = .pounds) {
         self.highlightColor = highlightColor
         self.cooldownDays = cooldownDays
         self.gender = gender
+        self.weightUnit = weightUnit
     }
 }
 
@@ -85,5 +87,35 @@ struct WorkoutSession: Codable, Identifiable {
         self.id = UUID()
         self.muscleGroup = muscleGroup
         self.date = date
+    }
+}
+
+// MARK: - Weight Tracking
+
+enum WeightUnit: String, Codable, CaseIterable {
+    case pounds = "lbs"
+    case kilograms = "kg"
+
+    var displayName: String {
+        switch self {
+        case .pounds: return "Pounds"
+        case .kilograms: return "Kilograms"
+        }
+    }
+}
+
+struct WeightEntry: Codable, Identifiable {
+    let id: UUID
+    let weight: Double
+    let date: Date
+
+    init(weight: Double, date: Date = Date()) {
+        self.id = UUID()
+        self.weight = weight
+        self.date = date
+    }
+
+    var dateOnly: Date {
+        Calendar.current.startOfDay(for: date)
     }
 }
