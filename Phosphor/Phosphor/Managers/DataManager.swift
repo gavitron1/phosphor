@@ -329,6 +329,12 @@ class DataManager: ObservableObject {
         return entriesForDay.last?.weight
     }
 
+    func updateUseUnifiedCooldown(_ useUnified: Bool) {
+        settings.useUnifiedCooldown = useUnified
+        saveLocalData()
+        debouncedSyncSettingsToCloud()
+    }
+
     // MARK: - Exercise History
 
     func recordExercise(_ exercise: Exercise) {

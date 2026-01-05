@@ -95,19 +95,21 @@ struct UserSettings: Codable {
     var appearanceMode: AppearanceMode
     var weight: Double?  // Weight in user's preferred unit
     var weightUnit: WeightUnit
+    var useUnifiedCooldown: Bool  // Whether to use same cooldown for all muscles
 
     // Computed property for backwards compatibility and convenience
     var darkMode: Bool {
         appearanceMode == .dark
     }
 
-    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, appearanceMode: AppearanceMode = .system, weight: Double? = nil, weightUnit: WeightUnit = .pounds) {
+    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, appearanceMode: AppearanceMode = .system, weight: Double? = nil, weightUnit: WeightUnit = .pounds, useUnifiedCooldown: Bool = true) {
         self.highlightColor = highlightColor
         self.cooldownDays = cooldownDays
         self.gender = gender
         self.appearanceMode = appearanceMode
         self.weight = weight
         self.weightUnit = weightUnit
+        self.useUnifiedCooldown = useUnifiedCooldown
     }
 
     // Custom decoding to handle migration from old darkMode bool
@@ -118,6 +120,7 @@ struct UserSettings: Codable {
         gender = try container.decode(Gender.self, forKey: .gender)
         weight = try container.decodeIfPresent(Double.self, forKey: .weight)
         weightUnit = try container.decodeIfPresent(WeightUnit.self, forKey: .weightUnit) ?? .pounds
+        useUnifiedCooldown = try container.decodeIfPresent(Bool.self, forKey: .useUnifiedCooldown) ?? true
 
         // Try to decode new appearanceMode, fall back to old darkMode
         if let mode = try? container.decode(AppearanceMode.self, forKey: .appearanceMode) {
@@ -138,10 +141,11 @@ struct UserSettings: Codable {
         try container.encode(appearanceMode, forKey: .appearanceMode)
         try container.encodeIfPresent(weight, forKey: .weight)
         try container.encode(weightUnit, forKey: .weightUnit)
+        try container.encode(useUnifiedCooldown, forKey: .useUnifiedCooldown)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case highlightColor, cooldownDays, gender, appearanceMode, darkMode, weight, weightUnit
+        case highlightColor, cooldownDays, gender, appearanceMode, darkMode, weight, weightUnit, useUnifiedCooldown
     }
 }
 

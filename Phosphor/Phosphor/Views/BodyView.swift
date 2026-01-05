@@ -741,10 +741,12 @@ struct WeightSparkline: View {
 struct RecoverySettingsView: View {
     @ObservedObject var dataManager: DataManager
     @Environment(\.dismiss) private var dismiss
-    @State private var useUnifiedCooldown: Bool = true
+
+    private var useUnifiedCooldown: Bool {
+        dataManager.settings.useUnifiedCooldown
+    }
 
     private var unifiedCooldownDays: Double {
-        // Use the global cooldown setting
         dataManager.settings.cooldownDays
     }
 
@@ -758,7 +760,10 @@ struct RecoverySettingsView: View {
             List {
                 // Unified toggle section
                 Section {
-                    Toggle("Same for all muscles", isOn: $useUnifiedCooldown)
+                    Toggle("Same for all muscles", isOn: Binding(
+                        get: { useUnifiedCooldown },
+                        set: { dataManager.updateUseUnifiedCooldown($0) }
+                    ))
                         .tint(dataManager.settings.highlightColor.color)
 
                     if useUnifiedCooldown {
