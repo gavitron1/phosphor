@@ -362,7 +362,7 @@ struct BodyView: View {
                         )
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 48)
+                    .padding(.bottom, 8)
                 }
                 .sheet(isPresented: $showWeightInput) {
                     WeightInputView(

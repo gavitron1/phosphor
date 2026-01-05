@@ -211,7 +211,6 @@ struct TappableBodyView: View {
                             .resizable()
                             .aspectRatio(contentMode: .fit)
                             .foregroundColor(muscleColor(for: intensity))
-                            .animation(.easeInOut(duration: 0.5), value: intensity)
                     }
                 }
 
