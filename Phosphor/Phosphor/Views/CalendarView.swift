@@ -42,7 +42,7 @@ struct CalendarView: View {
 
                 // Day headers
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
-                    ForEach(["S", "M", "T", "W", "T", "F", "S"], id: \.self) { day in
+                    ForEach(Array(["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].enumerated()), id: \.offset) { _, day in
                         Text(day)
                             .font(.caption)
                             .fontWeight(.semibold)
@@ -201,28 +201,36 @@ struct CalendarDayCell: View {
         calendar.isDateInToday(date)
     }
 
+    private var dayTextColor: Color {
+        if isSelected {
+            return .white
+        } else if isToday {
+            return highlightColor
+        } else if hasActivity {
+            return highlightColor
+        } else {
+            return .primary
+        }
+    }
+
     var body: some View {
         Button(action: onTap) {
             VStack(spacing: 2) {
                 Text("\(calendar.component(.day, from: date))")
-                    .font(.system(size: 14, weight: isToday ? .bold : .regular))
-                    .foregroundColor(isSelected ? .white : (isToday ? highlightColor : .primary))
+                    .font(.system(size: 14, weight: (isToday || hasActivity) ? .bold : .regular))
+                    .foregroundColor(dayTextColor)
                     .frame(width: 32, height: 32)
                     .background(
                         Circle()
                             .fill(isSelected ? highlightColor : Color.clear)
                     )
 
-                // Weight display or activity dot
+                // Weight display
                 if let weight = weight {
                     Text(String(format: "%.0f", weight))
                         .font(.system(size: 9, weight: .medium))
                         .foregroundColor(.secondary)
                         .lineLimit(1)
-                } else if hasActivity {
-                    Circle()
-                        .fill(highlightColor)
-                        .frame(width: 5, height: 5)
                 } else {
                     Text(" ")
                         .font(.system(size: 9))

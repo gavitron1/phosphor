@@ -108,7 +108,11 @@ struct BodyView: View {
                     VStack(spacing: 0) {
                         // Body avatar section (screen height)
                         HStack(spacing: 0) {
-                            // Body with face
+                            // Left spacer to balance slider width
+                            Spacer()
+                                .frame(width: 56)
+
+                            // Body centered
                             ZStack {
                                 if daysOffset < 0 && !hasDataForSelectedDate {
                                     VStack(spacing: 8) {
@@ -713,6 +717,9 @@ struct WeightInputView: View {
                     .fill(Color(.systemGray4))
                     .frame(width: 36, height: 5)
                     .padding(.top, 8)
+
+                Spacer()
+                    .frame(height: 8)
 
                 HStack {
                     Button("Cancel") {
