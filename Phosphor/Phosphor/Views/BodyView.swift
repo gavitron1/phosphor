@@ -10,6 +10,8 @@ struct BodyView: View {
     @State private var isDragging: Bool = false
     @State private var showCooldownPopover: Bool = false
     @State private var showWeightInput: Bool = false
+    @State private var showCalendar: Bool = false
+    @State private var showSettings: Bool = false
 
     // Muscle feedback label state
     @State private var feedbackText: String = ""
@@ -243,8 +245,9 @@ struct BodyView: View {
                         .padding()
                     }
                 }
-                // Layer 2: Top bar overlay (clock button + date label + swap button)
+                // Layer 2: Button overlays
                 VStack {
+                    // Top row: Clock (left), Date (center), Settings (right)
                     HStack {
                         // Clock button (top left)
                         GlassCircleButton(
@@ -271,12 +274,12 @@ struct BodyView: View {
 
                         Spacer()
 
-                        // Swap front/back button (top right)
+                        // Settings button (top right)
                         GlassCircleButton(
-                            systemName: "arrow.trianglehead.2.clockwise",
+                            systemName: "gearshape.fill",
                             color: dataManager.settings.highlightColor.color,
                             action: {
-                                currentSide = currentSide == .front ? .back : .front
+                                showSettings = true
                             }
                         )
                     }
@@ -285,8 +288,20 @@ struct BodyView: View {
 
                     Spacer()
 
-                    // Weight button (bottom left)
+                    // Bottom row: Calendar (left), Weight (center), Swap (right)
                     HStack {
+                        // Calendar button (bottom left)
+                        GlassCircleButton(
+                            systemName: "calendar",
+                            color: dataManager.settings.highlightColor.color,
+                            action: {
+                                showCalendar = true
+                            }
+                        )
+
+                        Spacer()
+
+                        // Weight button (bottom center)
                         Button(action: {
                             showWeightInput = true
                         }) {
@@ -299,6 +314,15 @@ struct BodyView: View {
                         .modifier(GlassEffectModifier())
 
                         Spacer()
+
+                        // Swap front/back button (bottom right)
+                        GlassCircleButton(
+                            systemName: "arrow.trianglehead.2.clockwise",
+                            color: dataManager.settings.highlightColor.color,
+                            action: {
+                                currentSide = currentSide == .front ? .back : .front
+                            }
+                        )
                     }
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8)
@@ -311,7 +335,15 @@ struct BodyView: View {
                             dataManager.updateWeight(weight)
                         }
                     )
-                    .presentationDetents([.medium])
+                    .presentationDetents([.height(420)])
+                }
+                .sheet(isPresented: $showCalendar) {
+                    CalendarView()
+                }
+                .sheet(isPresented: $showSettings) {
+                    NavigationStack {
+                        SettingsView()
+                    }
                 }
             }
         }
@@ -674,48 +706,56 @@ struct WeightInputView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
-            // Header
-            HStack {
-                Button("Cancel") {
-                    dismiss()
-                }
-                .foregroundColor(.secondary)
+        VStack(spacing: 16) {
+            // Header with drag indicator
+            VStack(spacing: 12) {
+                Capsule()
+                    .fill(Color(.systemGray4))
+                    .frame(width: 36, height: 5)
+                    .padding(.top, 8)
 
-                Spacer()
-
-                Text("Weight")
-                    .font(.headline)
-
-                Spacer()
-
-                Button("Save") {
-                    if let weight = Double(weightString), weight > 0 {
-                        onSave(weight)
+                HStack {
+                    Button("Cancel") {
+                        dismiss()
                     }
-                    dismiss()
+                    .foregroundColor(.secondary)
+                    .font(.body)
+
+                    Spacer()
+
+                    Text("Weight")
+                        .font(.headline)
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    Button("Save") {
+                        if let weight = Double(weightString), weight > 0 {
+                            onSave(weight)
+                        }
+                        dismiss()
+                    }
+                    .foregroundColor(highlightColor)
+                    .fontWeight(.semibold)
                 }
-                .foregroundColor(highlightColor)
-                .fontWeight(.semibold)
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal)
-            .padding(.top)
 
             // Weight display
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(displayWeight)
-                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
                     .foregroundColor(.primary)
                 Text("lbs")
-                    .font(.title2)
+                    .font(.title3)
                     .foregroundColor(.secondary)
             }
-            .padding(.vertical, 20)
+            .padding(.vertical, 12)
 
             // Numpad
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 ForEach(0..<3) { row in
-                    HStack(spacing: 12) {
+                    HStack(spacing: 10) {
                         ForEach(1...3, id: \.self) { col in
                             let number = row * 3 + col
                             NumpadButton(label: "\(number)", highlightColor: highlightColor) {
@@ -725,7 +765,7 @@ struct WeightInputView: View {
                     }
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: 10) {
                     NumpadButton(label: ".", highlightColor: highlightColor) {
                         appendDecimal()
                     }
@@ -737,10 +777,11 @@ struct WeightInputView: View {
                     }
                 }
             }
-            .padding(.horizontal)
+            .padding(.horizontal, 20)
 
             Spacer()
         }
+        .background(Color(.systemBackground))
     }
 
     private func appendDigit(_ digit: String) {

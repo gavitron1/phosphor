@@ -145,3 +145,15 @@ struct WorkoutSession: Codable, Identifiable {
         self.date = date
     }
 }
+
+struct WeightEntry: Codable, Identifiable {
+    let id: UUID
+    let weight: Double
+    let date: Date
+
+    init(weight: Double, date: Date = Date()) {
+        self.id = UUID()
+        self.weight = weight
+        self.date = date
+    }
+}

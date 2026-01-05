@@ -52,19 +52,20 @@ struct CalendarView: View {
                 .padding(.horizontal)
 
                 // Calendar grid
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 4) {
                     ForEach(daysInMonth(), id: \.self) { date in
                         if let date = date {
                             CalendarDayCell(
                                 date: date,
                                 isSelected: calendar.isDate(date, inSameDayAs: selectedDate),
                                 hasActivity: hasActivityOnDate(date),
+                                weight: dataManager.getWeight(for: date),
                                 highlightColor: dataManager.settings.highlightColor.color,
                                 onTap: { selectedDate = date }
                             )
                         } else {
                             Text("")
-                                .frame(height: 44)
+                                .frame(height: 56)
                         }
                     }
                 }
@@ -190,6 +191,7 @@ struct CalendarDayCell: View {
     let date: Date
     let isSelected: Bool
     let hasActivity: Bool
+    let weight: Double?
     let highlightColor: Color
     let onTap: () -> Void
 
@@ -201,21 +203,32 @@ struct CalendarDayCell: View {
 
     var body: some View {
         Button(action: onTap) {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 Text("\(calendar.component(.day, from: date))")
-                    .font(.system(size: 16, weight: isToday ? .bold : .regular))
+                    .font(.system(size: 14, weight: isToday ? .bold : .regular))
                     .foregroundColor(isSelected ? .white : (isToday ? highlightColor : .primary))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 32, height: 32)
                     .background(
                         Circle()
                             .fill(isSelected ? highlightColor : Color.clear)
                     )
 
-                // Activity dot
-                Circle()
-                    .fill(hasActivity ? highlightColor : Color.clear)
-                    .frame(width: 6, height: 6)
+                // Weight display or activity dot
+                if let weight = weight {
+                    Text(String(format: "%.0f", weight))
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                } else if hasActivity {
+                    Circle()
+                        .fill(highlightColor)
+                        .frame(width: 5, height: 5)
+                } else {
+                    Text(" ")
+                        .font(.system(size: 9))
+                }
             }
+            .frame(height: 52)
         }
         .buttonStyle(PlainButtonStyle())
     }

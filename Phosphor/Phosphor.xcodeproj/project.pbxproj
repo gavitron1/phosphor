@@ -17,6 +17,9 @@
 		001A00008 /* BodyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F00008 /* BodyView.swift */; };
 		001A00009 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001F00009 /* SettingsView.swift */; };
 		AE41ED1B2EF87CCE0098B4EE /* BodyImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE41ED1A2EF87CCE0098B4EE /* BodyImageView.swift */; };
+		AE8B25672F0B90DC00B27DA7 /* DataManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B25662F0B90DC00B27DA7 /* DataManager.swift */; };
+		AE8B25692F0B90E400B27DA7 /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B25682F0B90E400B27DA7 /* NotificationManager.swift */; };
+		AE8B256B2F0B90EB00B27DA7 /* CalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE8B256A2F0B90EB00B27DA7 /* CalendarView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +36,9 @@
 		001F00013 /* Phosphor.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Phosphor.entitlements; sourceTree = "<group>"; };
 		001P00001 /* Phosphor.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Phosphor.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AE41ED1A2EF87CCE0098B4EE /* BodyImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyImageView.swift; sourceTree = "<group>"; };
+		AE8B25662F0B90DC00B27DA7 /* DataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataManager.swift; sourceTree = "<group>"; };
+		AE8B25682F0B90E400B27DA7 /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
+		AE8B256A2F0B90EB00B27DA7 /* CalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -89,6 +95,8 @@
 		001G00005 /* Managers */ = {
 			isa = PBXGroup;
 			children = (
+				AE8B25682F0B90E400B27DA7 /* NotificationManager.swift */,
+				AE8B25662F0B90DC00B27DA7 /* DataManager.swift */,
 				001F00006 /* CloudKitManager.swift */,
 				001F00007 /* DataManager.swift */,
 			);
@@ -98,6 +106,7 @@
 		001G00006 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				AE8B256A2F0B90EB00B27DA7 /* CalendarView.swift */,
 				AE41ED1A2EF87CCE0098B4EE /* BodyImageView.swift */,
 				001F00008 /* BodyView.swift */,
 				001F00009 /* SettingsView.swift */,
@@ -175,8 +184,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				001A00001 /* PhosphorApp.swift in Sources */,
+				AE8B25672F0B90DC00B27DA7 /* DataManager.swift in Sources */,
+				AE8B256B2F0B90EB00B27DA7 /* CalendarView.swift in Sources */,
 				001A00002 /* ContentView.swift in Sources */,
 				001A00004 /* MuscleGroup.swift in Sources */,
+				AE8B25692F0B90E400B27DA7 /* NotificationManager.swift in Sources */,
 				001A00005 /* WorkoutData.swift in Sources */,
 				AE41ED1B2EF87CCE0098B4EE /* BodyImageView.swift in Sources */,
 				001A00006 /* CloudKitManager.swift in Sources */,

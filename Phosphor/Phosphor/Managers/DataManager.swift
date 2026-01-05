@@ -8,11 +8,13 @@ class DataManager: ObservableObject {
 
     @Published var muscleGroupData: [MuscleGroup: MuscleGroupData] = [:]
     @Published var settings: UserSettings = UserSettings()
+    @Published var weightHistory: [WeightEntry] = []
     @Published var isLoading = false
     @Published var syncError: String?
 
     private let muscleDataKey = "muscleGroupData"
     private let settingsKey = "userSettings"
+    private let weightHistoryKey = "weightHistory"
     private let cloudKitManager = CloudKitManager.shared
 
     private var syncTimer: Timer?
@@ -45,6 +47,12 @@ class DataManager: ObservableObject {
            let decoded = try? JSONDecoder().decode(UserSettings.self, from: data) {
             settings = decoded
         }
+
+        // Load weight history
+        if let data = UserDefaults.standard.data(forKey: weightHistoryKey),
+           let decoded = try? JSONDecoder().decode([WeightEntry].self, from: data) {
+            weightHistory = decoded
+        }
     }
 
     private func saveLocalData() {
@@ -55,6 +63,10 @@ class DataManager: ObservableObject {
 
         if let encoded = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(encoded, forKey: settingsKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(weightHistory) {
+            UserDefaults.standard.set(encoded, forKey: weightHistoryKey)
         }
     }
 
@@ -165,11 +177,31 @@ class DataManager: ObservableObject {
 
     func updateWeight(_ weight: Double?) {
         settings.weight = weight
+
+        // Also log to weight history
+        if let weight = weight {
+            let entry = WeightEntry(weight: weight)
+            weightHistory.append(entry)
+        }
+
         saveLocalData()
 
         Task {
             await syncSettingsToCloud()
         }
+    }
+
+    func getWeight(for date: Date) -> Double? {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: date)
+        let endOfDay = calendar.date(byAdding: .day, value: 1, to: startOfDay) ?? date
+
+        // Find the last weight entry for this day
+        let entriesForDay = weightHistory.filter { entry in
+            entry.date >= startOfDay && entry.date < endOfDay
+        }
+
+        return entriesForDay.last?.weight
     }
 
     // MARK: - iCloud Sync
