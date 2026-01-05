@@ -224,22 +224,24 @@ struct BodyView: View {
                                 }
                             }
 
-                            // Slider overlay on the right
-                            HStack {
-                                Spacer()
-                                CenteredVerticalSlider(
-                                    value: $daysOffset,
-                                    isDragging: $isDragging,
-                                    range: -7...7,
-                                    highlightColor: dataManager.settings.highlightColor.color,
-                                    onValueChanged: { sliderDetentFeedback() },
-                                    onRelease: {
-                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                                            daysOffset = 0
+                            // Slider overlay on the right (hidden in edit mode)
+                            if !isEditingFrequency {
+                                HStack {
+                                    Spacer()
+                                    CenteredVerticalSlider(
+                                        value: $daysOffset,
+                                        isDragging: $isDragging,
+                                        range: -7...7,
+                                        highlightColor: dataManager.settings.highlightColor.color,
+                                        onValueChanged: { sliderDetentFeedback() },
+                                        onRelease: {
+                                            withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+                                                daysOffset = 0
+                                            }
                                         }
-                                    }
-                                )
-                                .frame(width: 56, height: geometry.size.height / 3)
+                                    )
+                                    .frame(width: 56, height: geometry.size.height / 3)
+                                }
                             }
                         }
                         .frame(height: geometry.size.height)
@@ -378,9 +380,22 @@ struct BodyView: View {
                         .padding(.bottom, 8)
                     }
 
-                    // Bottom row: Calendar (left), Dynamic Capsule (center), Settings (right)
-                    // Hidden in edit mode
-                    if !isEditingFrequency {
+                    // Bottom row
+                    if isEditingFrequency {
+                        // Edit mode: instruction capsule (fills space, not tappable)
+                        Text("Tap on a muscle group to change workout frequency")
+                            .font(.body)
+                            .fontWeight(.medium)
+                            .foregroundColor(dataManager.settings.highlightColor.color)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 14)
+                            .modifier(GlassCapsuleModifier())
+                            .padding(.horizontal, 16)
+                            .padding(.bottom, 8)
+                            .transition(.scale.combined(with: .opacity))
+                    } else {
+                        // Normal mode: Calendar (left), Dynamic Capsule (center), Settings (right)
                         HStack {
                             // Calendar button (bottom left)
                             GlassCircleButton(
