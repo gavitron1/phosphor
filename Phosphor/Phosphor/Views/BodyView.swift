@@ -321,7 +321,7 @@ struct BodyView: View {
                 .scrollDisabled(isEditingFrequency)
                 // Layer 2: Button overlays
                 VStack {
-                    // Top row: Edit Frequency (left), Settings (right)
+                    // Top row: Edit Frequency (left), Swap front/back (right)
                     HStack {
                         // Edit Frequency button (top left)
                         Button {
@@ -353,16 +353,14 @@ struct BodyView: View {
 
                         Spacer()
 
-                        // Settings button (top right) - hidden in edit mode
-                        if !isEditingFrequency {
-                            GlassCircleButton(
-                                systemName: "gearshape.fill",
-                                color: dataManager.settings.highlightColor.color,
-                                action: {
-                                    showSettings = true
-                                }
-                            )
-                        }
+                        // Swap front/back button (top right) - always visible
+                        GlassCircleButton(
+                            systemName: "arrow.trianglehead.2.clockwise",
+                            color: dataManager.settings.highlightColor.color,
+                            action: {
+                                currentSide = currentSide == .front ? .back : .front
+                            }
+                        )
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
@@ -380,7 +378,7 @@ struct BodyView: View {
                         .padding(.bottom, 8)
                     }
 
-                    // Bottom row: Calendar (left), Dynamic Capsule (center), Swap (right)
+                    // Bottom row: Calendar (left), Dynamic Capsule (center), Settings (right)
                     // Hidden in edit mode
                     if !isEditingFrequency {
                         HStack {
@@ -410,12 +408,12 @@ struct BodyView: View {
 
                             Spacer()
 
-                            // Swap front/back button (bottom right)
+                            // Settings button (bottom right)
                             GlassCircleButton(
-                                systemName: "arrow.trianglehead.2.clockwise",
+                                systemName: "gearshape.fill",
                                 color: dataManager.settings.highlightColor.color,
                                 action: {
-                                    currentSide = currentSide == .front ? .back : .front
+                                    showSettings = true
                                 }
                             )
                         }

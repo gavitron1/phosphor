@@ -176,9 +176,9 @@ struct TappableBodyView: View {
         Color.gray.opacity(0.4)
     }
 
-    // Light gray for unselected muscles in frequency edit mode
+    // Gray color for unselected muscles in frequency edit mode (swapped for light/dark)
     private var editModeUnselectedColor: Color {
-        Color.gray.opacity(0.3)
+        darkMode ? Color.gray.opacity(0.6) : Color.gray.opacity(0.3)
     }
 
     // Blend highlight color with base color based on intensity
