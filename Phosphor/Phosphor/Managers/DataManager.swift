@@ -18,6 +18,8 @@ class DataManager: ObservableObject {
     private let cloudKitManager = CloudKitManager.shared
 
     private var syncTimer: Timer?
+    private var debouncedSyncTask: Task<Void, Never>?
+    private var debouncedSettingsSyncTask: Task<Void, Never>?
 
     private init() {
         loadLocalData()
@@ -91,10 +93,7 @@ class DataManager: ObservableObject {
                 )
                 muscleGroupData[group] = data
                 saveLocalData()
-
-                Task {
-                    await syncToCloud()
-                }
+                debouncedSyncToCloud()
                 return false // Tap was undone
             }
         }
@@ -108,12 +107,30 @@ class DataManager: ObservableObject {
         )
         muscleGroupData[group] = data
         saveLocalData()
-
-        // Sync to iCloud
-        Task {
-            await syncToCloud()
-        }
+        debouncedSyncToCloud()
         return true // Tap was recorded
+    }
+
+    /// Debounced sync - waits 2 seconds after last call before actually syncing
+    private func debouncedSyncToCloud() {
+        debouncedSyncTask?.cancel()
+        debouncedSyncTask = Task {
+            try? await Task.sleep(nanoseconds: 2_000_000_000)  // 2 seconds
+            if !Task.isCancelled {
+                await syncToCloud()
+            }
+        }
+    }
+
+    /// Debounced settings sync - waits 1 second after last call before syncing
+    private func debouncedSyncSettingsToCloud() {
+        debouncedSettingsSyncTask?.cancel()
+        debouncedSettingsSyncTask = Task {
+            try? await Task.sleep(nanoseconds: 1_000_000_000)  // 1 second
+            if !Task.isCancelled {
+                await syncSettingsToCloud()
+            }
+        }
     }
 
     func getIntensity(for group: MuscleGroup) -> Double {
@@ -144,37 +161,25 @@ class DataManager: ObservableObject {
     func updateHighlightColor(_ color: CodableColor) {
         settings.highlightColor = color
         saveLocalData()
-
-        Task {
-            await syncSettingsToCloud()
-        }
+        debouncedSyncSettingsToCloud()
     }
 
     func updateCooldownDays(_ days: Double) {
         settings.cooldownDays = days
         saveLocalData()
-
-        Task {
-            await syncSettingsToCloud()
-        }
+        debouncedSyncSettingsToCloud()
     }
 
     func updateGender(_ gender: Gender) {
         settings.gender = gender
         saveLocalData()
-
-        Task {
-            await syncSettingsToCloud()
-        }
+        debouncedSyncSettingsToCloud()
     }
 
     func updateAppearanceMode(_ mode: AppearanceMode) {
         settings.appearanceMode = mode
         saveLocalData()
-
-        Task {
-            await syncSettingsToCloud()
-        }
+        debouncedSyncSettingsToCloud()
     }
 
     func updateWeight(_ weight: Double?) {
@@ -187,10 +192,7 @@ class DataManager: ObservableObject {
         }
 
         saveLocalData()
-
-        Task {
-            await syncSettingsToCloud()
-        }
+        debouncedSyncSettingsToCloud()
     }
 
     func updateWeightUnit(_ unit: WeightUnit) {
@@ -212,10 +214,7 @@ class DataManager: ObservableObject {
 
         settings.weightUnit = unit
         saveLocalData()
-
-        Task {
-            await syncSettingsToCloud()
-        }
+        debouncedSyncSettingsToCloud()
     }
 
     private func convertWeight(_ weight: Double, from: WeightUnit, to: WeightUnit) -> Double {
