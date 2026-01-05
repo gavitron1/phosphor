@@ -191,6 +191,7 @@ struct BodyView: View {
                                         }
                                     }
                                 )
+                                .offset(y: -32)
                                 .transaction { transaction in
                                     transaction.animation = nil
                                 }
