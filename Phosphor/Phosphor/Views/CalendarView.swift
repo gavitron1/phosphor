@@ -229,7 +229,7 @@ struct CalendarDayCell: View {
                 if let weight = weight {
                     Text(String(format: "%.0f", weight))
                         .font(.system(size: 9, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .foregroundColor(highlightColor)
                         .lineLimit(1)
                 } else {
                     Text(" ")

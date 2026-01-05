@@ -192,11 +192,36 @@ class DataManager: ObservableObject {
     }
 
     func updateWeightUnit(_ unit: WeightUnit) {
+        let oldUnit = settings.weightUnit
+        guard oldUnit != unit else { return }
+
+        // Convert current weight
+        if let currentWeight = settings.weight {
+            settings.weight = convertWeight(currentWeight, from: oldUnit, to: unit)
+        }
+
+        // Convert weight history
+        weightHistory = weightHistory.map { entry in
+            WeightEntry(
+                weight: convertWeight(entry.weight, from: oldUnit, to: unit),
+                date: entry.date
+            )
+        }
+
         settings.weightUnit = unit
         saveLocalData()
 
         Task {
             await syncSettingsToCloud()
+        }
+    }
+
+    private func convertWeight(_ weight: Double, from: WeightUnit, to: WeightUnit) -> Double {
+        if from == to { return weight }
+        if from == .pounds && to == .kilograms {
+            return weight * 0.453592
+        } else {
+            return weight * 2.20462
         }
     }
 

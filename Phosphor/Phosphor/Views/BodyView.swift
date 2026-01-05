@@ -362,7 +362,7 @@ struct BodyView: View {
                         )
                     }
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 48)
                 }
                 .sheet(isPresented: $showWeightInput) {
                     WeightInputView(
@@ -471,8 +471,8 @@ struct CenteredVerticalSlider: View {
             // Handle can travel full height of slider
             let valueRatio = value / (rangeSpan / 2)  // -1 to 1 for the range
             let handleY = centerY - (CGFloat(valueRatio) * usableHeight / 2)
-            // Position track at right side of frame
-            let trackX = geometry.size.width - trackWidth/2 - 8
+            // Position track at right side of frame (with 24pt inset)
+            let trackX = geometry.size.width - trackWidth/2 - 24
 
             ZStack {
                 // Track background
