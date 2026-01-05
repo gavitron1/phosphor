@@ -5,11 +5,13 @@ struct MuscleGroupData: Codable, Identifiable {
     var id: String { muscleGroup.rawValue }
     let muscleGroup: MuscleGroup
     var lastTappedDate: Date?
+    var previousTappedDate: Date?  // For undo - stores the date before the most recent tap
     var tapCount: Int
 
-    init(muscleGroup: MuscleGroup, lastTappedDate: Date? = nil, tapCount: Int = 0) {
+    init(muscleGroup: MuscleGroup, lastTappedDate: Date? = nil, previousTappedDate: Date? = nil, tapCount: Int = 0) {
         self.muscleGroup = muscleGroup
         self.lastTappedDate = lastTappedDate
+        self.previousTappedDate = previousTappedDate
         self.tapCount = tapCount
     }
 

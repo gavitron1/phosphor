@@ -82,10 +82,11 @@ class DataManager: ObservableObject {
         if let lastTapped = data.lastTappedDate {
             let elapsed = Date().timeIntervalSince(lastTapped)
             if elapsed < 10 {
-                // Undo: clear the last tap and decrement count
+                // Undo: restore the previous date and decrement count
                 data = MuscleGroupData(
                     muscleGroup: group,
-                    lastTappedDate: nil,
+                    lastTappedDate: data.previousTappedDate,  // Restore previous date
+                    previousTappedDate: nil,  // Clear the undo state
                     tapCount: max(0, data.tapCount - 1)
                 )
                 muscleGroupData[group] = data
@@ -98,10 +99,11 @@ class DataManager: ObservableObject {
             }
         }
 
-        // Normal tap: record it
+        // Normal tap: save current date as previous, then record new tap
         data = MuscleGroupData(
             muscleGroup: group,
             lastTappedDate: Date(),
+            previousTappedDate: data.lastTappedDate,  // Save old date for potential undo
             tapCount: data.tapCount + 1
         )
         muscleGroupData[group] = data
