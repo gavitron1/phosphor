@@ -3,19 +3,37 @@ import Foundation
 struct Exercise: Identifiable, Codable {
     let id: String
     let name: String
-    let muscleGroups: [MuscleGroup]
+    let muscleWork: [MuscleGroup: Double]  // Muscle group -> percentage (0.0 to 1.0)
     let category: ExerciseCategory
 
-    init(id: String = UUID().uuidString, name: String, muscleGroups: [MuscleGroup], category: ExerciseCategory) {
+    init(id: String = UUID().uuidString, name: String, muscleWork: [MuscleGroup: Double], category: ExerciseCategory) {
         self.id = id
         self.name = name
-        self.muscleGroups = muscleGroups
+        self.muscleWork = muscleWork
         self.category = category
     }
 
-    /// Returns the primary muscle group (first in the list)
+    /// Convenience initializer with all muscles at 100%
+    init(id: String = UUID().uuidString, name: String, muscleGroups: [MuscleGroup], category: ExerciseCategory) {
+        self.id = id
+        self.name = name
+        self.muscleWork = Dictionary(uniqueKeysWithValues: muscleGroups.map { ($0, 1.0) })
+        self.category = category
+    }
+
+    /// Returns all muscle groups worked by this exercise
+    var muscleGroups: [MuscleGroup] {
+        Array(muscleWork.keys)
+    }
+
+    /// Returns the primary muscle group (highest percentage)
     var primaryMuscle: MuscleGroup? {
-        muscleGroups.first
+        muscleWork.max(by: { $0.value < $1.value })?.key
+    }
+
+    /// Get the work percentage for a specific muscle (0.0 to 1.0)
+    func workPercentage(for muscle: MuscleGroup) -> Double {
+        muscleWork[muscle] ?? 0.0
     }
 }
 
