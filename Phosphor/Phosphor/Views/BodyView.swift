@@ -846,13 +846,21 @@ struct WeightInputView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var weightString: String = ""
-    @State private var hasAppeared: Bool = false
+    @State private var isEditing: Bool = false  // Track if user started typing
 
+    // Show placeholder (current weight) in gray, or user input in primary color
     private var displayWeight: String {
-        if weightString.isEmpty {
+        if isEditing {
+            return weightString.isEmpty ? "0" : weightString
+        } else if let weight = currentWeight {
+            return String(format: "%.1f", weight)
+        } else {
             return "0"
         }
-        return weightString
+    }
+
+    private var displayColor: Color {
+        isEditing ? .primary : .secondary
     }
 
     var body: some View {
@@ -883,7 +891,7 @@ struct WeightInputView: View {
                     Spacer()
 
                     Button("Save") {
-                        if let weight = Double(weightString), weight > 0 {
+                        if isEditing, let weight = Double(weightString), weight > 0 {
                             onSave(weight)
                         }
                         dismiss()
@@ -898,7 +906,7 @@ struct WeightInputView: View {
             HStack(alignment: .lastTextBaseline, spacing: 4) {
                 Text(displayWeight)
                     .font(.system(size: 56, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
+                    .foregroundColor(displayColor)
                 Text(weightUnit.rawValue)
                     .font(.title3)
                     .foregroundColor(.secondary)
@@ -935,25 +943,23 @@ struct WeightInputView: View {
             Spacer()
         }
         .background(Color(.systemBackground))
-        .onAppear {
-            if !hasAppeared {
-                hasAppeared = true
-                if let weight = currentWeight {
-                    weightString = String(format: "%.1f", weight)
-                }
-            }
-        }
     }
 
     private func appendDigit(_ digit: String) {
-        // Limit to reasonable weight values
-        if weightString.count < 5 {
+        // First digit clears the placeholder and starts fresh
+        if !isEditing {
+            isEditing = true
+            weightString = digit
+        } else if weightString.count < 5 {
             weightString += digit
         }
     }
 
     private func appendDecimal() {
-        if !weightString.contains(".") {
+        if !isEditing {
+            isEditing = true
+            weightString = "0."
+        } else if !weightString.contains(".") {
             if weightString.isEmpty {
                 weightString = "0."
             } else {
@@ -963,8 +969,12 @@ struct WeightInputView: View {
     }
 
     private func deleteLastDigit() {
-        if !weightString.isEmpty {
+        if isEditing && !weightString.isEmpty {
             weightString.removeLast()
+            // If we deleted everything, go back to placeholder mode
+            if weightString.isEmpty {
+                isEditing = false
+            }
         }
     }
 }
