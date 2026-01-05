@@ -154,6 +154,11 @@ struct TappableBodyView: View {
     let onMuscleGroupLongPressed: (MuscleGroup) -> Void
     let isMuscleEnabled: (MuscleGroup) -> Bool
 
+    // Frequency edit mode parameters (optional)
+    var isFrequencyEditMode: Bool = false
+    var selectedMuscleForFrequency: MuscleGroup? = nil
+    var onMuscleSelectedForFrequency: ((MuscleGroup) -> Void)? = nil
+
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewSize: CGSize = .zero
 
@@ -171,9 +176,23 @@ struct TappableBodyView: View {
         Color.gray.opacity(0.4)
     }
 
+    // Light gray for unselected muscles in frequency edit mode
+    private var editModeUnselectedColor: Color {
+        Color.gray.opacity(0.3)
+    }
+
     // Blend highlight color with base color based on intensity
     private func muscleColor(for muscleGroup: MuscleGroup) -> Color {
-        // If disabled, show gray
+        // In frequency edit mode: show selected muscle in highlight, others in light gray
+        if isFrequencyEditMode {
+            if muscleGroup == selectedMuscleForFrequency {
+                return highlightColor
+            } else {
+                return editModeUnselectedColor
+            }
+        }
+
+        // Normal mode: If disabled, show gray
         guard isMuscleEnabled(muscleGroup) else {
             return disabledColor
         }
@@ -285,7 +304,10 @@ struct TappableBodyView: View {
         for muscleGroup in muscleGroups.reversed() {
             if let image = muscleImages[muscleGroup],
                isNonTransparentPixel(at: point, in: image, viewSize: viewSize) {
-                if isMuscleEnabled(muscleGroup) {
+                // In frequency edit mode, select the muscle for frequency editing
+                if isFrequencyEditMode {
+                    onMuscleSelectedForFrequency?(muscleGroup)
+                } else if isMuscleEnabled(muscleGroup) {
                     onMuscleGroupTapped(muscleGroup)
                 }
                 return
@@ -294,6 +316,9 @@ struct TappableBodyView: View {
     }
 
     private func handleLongPress(at point: CGPoint, viewSize: CGSize) {
+        // Disable long press in frequency edit mode
+        if isFrequencyEditMode { return }
+
         // Check muscle groups from top to bottom (reversed order)
         for muscleGroup in muscleGroups.reversed() {
             if let image = muscleImages[muscleGroup],

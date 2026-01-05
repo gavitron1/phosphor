@@ -21,10 +21,13 @@ struct BodyView: View {
     @State private var currentSide: BodySide = .front
     @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
     @State private var isDragging: Bool = false
-    @State private var showCooldownPopover: Bool = false
     @State private var showWeightInput: Bool = false
     @State private var showCalendar: Bool = false
     @State private var showSettings: Bool = false
+
+    // Frequency edit mode state
+    @State private var isEditingFrequency: Bool = false
+    @State private var selectedMuscleForFrequency: MuscleGroup?
 
     // Dynamic capsule state
     @State private var feedbackText: String = ""
@@ -204,6 +207,15 @@ struct BodyView: View {
                                     },
                                     isMuscleEnabled: { muscleGroup in
                                         dataManager.isEnabled(for: muscleGroup)
+                                    },
+                                    isFrequencyEditMode: isEditingFrequency,
+                                    selectedMuscleForFrequency: selectedMuscleForFrequency,
+                                    onMuscleSelectedForFrequency: { muscleGroup in
+                                        withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                            selectedMuscleForFrequency = muscleGroup
+                                        }
+                                        let generator = UISelectionFeedbackGenerator()
+                                        generator.selectionChanged()
                                     }
                                 )
                                 .offset(y: -32)
@@ -306,74 +318,110 @@ struct BodyView: View {
                         .padding()
                     }
                 }
+                .scrollDisabled(isEditingFrequency)
                 // Layer 2: Button overlays
                 VStack {
-                    // Top row: Clock (left), Settings (right)
+                    // Top row: Edit Frequency (left), Settings (right)
                     HStack {
-                        // Clock button (top left) - Recovery settings
-                        GlassCircleButton(
-                            systemName: "clock.fill",
-                            color: dataManager.settings.highlightColor.color,
-                            action: {
-                                showCooldownPopover = true
+                        // Edit Frequency button (top left)
+                        Button {
+                            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+                                if isEditingFrequency {
+                                    // Exit edit mode
+                                    isEditingFrequency = false
+                                    selectedMuscleForFrequency = nil
+                                } else {
+                                    // Enter edit mode
+                                    isEditingFrequency = true
+                                }
                             }
-                        )
+                        } label: {
+                            HStack(spacing: 6) {
+                                if !isEditingFrequency {
+                                    Image(systemName: "clock.fill")
+                                        .font(.system(size: 16, weight: .semibold))
+                                }
+                                Text(isEditingFrequency ? "Done" : "Edit")
+                                    .font(.body)
+                                    .fontWeight(.semibold)
+                            }
+                            .foregroundStyle(dataManager.settings.highlightColor.color)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                        }
+                        .modifier(GlassCapsuleModifier())
 
                         Spacer()
 
-                        // Settings button (top right)
-                        GlassCircleButton(
-                            systemName: "gearshape.fill",
-                            color: dataManager.settings.highlightColor.color,
-                            action: {
-                                showSettings = true
-                            }
-                        )
+                        // Settings button (top right) - hidden in edit mode
+                        if !isEditingFrequency {
+                            GlassCircleButton(
+                                systemName: "gearshape.fill",
+                                color: dataManager.settings.highlightColor.color,
+                                action: {
+                                    showSettings = true
+                                }
+                            )
+                        }
                     }
                     .padding(.horizontal, 16)
                     .padding(.top, 12)
 
                     Spacer()
 
-                    // Bottom row: Calendar (left), Dynamic Capsule (center), Swap (right)
-                    HStack {
-                        // Calendar button (bottom left)
-                        GlassCircleButton(
-                            systemName: "calendar",
-                            color: dataManager.settings.highlightColor.color,
-                            action: {
-                                showCalendar = true
-                            }
+                    // Frequency settings card (when editing and muscle selected)
+                    if isEditingFrequency, let selectedMuscle = selectedMuscleForFrequency {
+                        FrequencySettingsCard(
+                            muscleGroup: selectedMuscle,
+                            dataManager: dataManager,
+                            highlightColor: dataManager.settings.highlightColor.color
                         )
-
-                        Spacer()
-
-                        // Dynamic capsule (center) - shows weight, date, or feedback
-                        DynamicCapsuleButton(
-                            mode: effectiveDisplayMode,
-                            weightText: weightDisplayText,
-                            dateText: dateText,
-                            weightEntries: Array(dataManager.getDailyWeightHistory().suffix(7)),
-                            weightTrend: weightTrend,
-                            highlightColor: dataManager.settings.highlightColor.color,
-                            onWeightTap: {
-                                showWeightInput = true
-                            }
-                        )
-
-                        Spacer()
-
-                        // Swap front/back button (bottom right)
-                        GlassCircleButton(
-                            systemName: "arrow.trianglehead.2.clockwise",
-                            color: dataManager.settings.highlightColor.color,
-                            action: {
-                                currentSide = currentSide == .front ? .back : .front
-                            }
-                        )
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                        .padding(.bottom, 8)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 8)
+
+                    // Bottom row: Calendar (left), Dynamic Capsule (center), Swap (right)
+                    // Hidden in edit mode
+                    if !isEditingFrequency {
+                        HStack {
+                            // Calendar button (bottom left)
+                            GlassCircleButton(
+                                systemName: "calendar",
+                                color: dataManager.settings.highlightColor.color,
+                                action: {
+                                    showCalendar = true
+                                }
+                            )
+
+                            Spacer()
+
+                            // Dynamic capsule (center) - shows weight, date, or feedback
+                            DynamicCapsuleButton(
+                                mode: effectiveDisplayMode,
+                                weightText: weightDisplayText,
+                                dateText: dateText,
+                                weightEntries: Array(dataManager.getDailyWeightHistory().suffix(7)),
+                                weightTrend: weightTrend,
+                                highlightColor: dataManager.settings.highlightColor.color,
+                                onWeightTap: {
+                                    showWeightInput = true
+                                }
+                            )
+
+                            Spacer()
+
+                            // Swap front/back button (bottom right)
+                            GlassCircleButton(
+                                systemName: "arrow.trianglehead.2.clockwise",
+                                color: dataManager.settings.highlightColor.color,
+                                action: {
+                                    currentSide = currentSide == .front ? .back : .front
+                                }
+                            )
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 8)
+                    }
                 }
                 .sheet(isPresented: $showWeightInput) {
                     WeightInputView(
@@ -393,9 +441,6 @@ struct BodyView: View {
                     NavigationStack {
                         SettingsView()
                     }
-                }
-                .sheet(isPresented: $showCooldownPopover) {
-                    RecoverySettingsView(dataManager: dataManager)
                 }
                 .sheet(item: $selectedMuscleForExercise) { muscleGroup in
                     ExercisePickerSheet(
@@ -733,141 +778,6 @@ struct WeightSparkline: View {
                 .stroke(color, lineWidth: 2)
             }
         }
-    }
-}
-
-// MARK: - Recovery Settings View
-
-struct RecoverySettingsView: View {
-    @ObservedObject var dataManager: DataManager
-    @Environment(\.dismiss) private var dismiss
-
-    private var useUnifiedCooldown: Bool {
-        dataManager.settings.useUnifiedCooldown
-    }
-
-    private var unifiedCooldownDays: Double {
-        dataManager.settings.cooldownDays
-    }
-
-    private var unifiedCooldownText: String {
-        let days = Int(unifiedCooldownDays)
-        return days == 1 ? "1 day" : "\(days) days"
-    }
-
-    var body: some View {
-        NavigationStack {
-            List {
-                // Unified toggle section
-                Section {
-                    Toggle("Same for all muscles", isOn: Binding(
-                        get: { useUnifiedCooldown },
-                        set: { dataManager.updateUseUnifiedCooldown($0) }
-                    ))
-                        .tint(dataManager.settings.highlightColor.color)
-
-                    if useUnifiedCooldown {
-                        VStack(spacing: 8) {
-                            Slider(
-                                value: Binding(
-                                    get: { unifiedCooldownDays },
-                                    set: { newValue in
-                                        dataManager.updateCooldownDays(newValue)
-                                        // Also update all individual muscle groups
-                                        for group in MuscleGroup.allCases {
-                                            dataManager.updateMuscleGroupCooldown(group, days: newValue)
-                                        }
-                                    }
-                                ),
-                                in: 1...14,
-                                step: 1
-                            )
-                            .tint(dataManager.settings.highlightColor.color)
-
-                            Text("Recovery: \(unifiedCooldownText)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    }
-                }
-
-                // Individual muscle groups (only show when not unified)
-                if !useUnifiedCooldown {
-                    Section {
-                        ForEach(MuscleGroup.allCases, id: \.self) { muscleGroup in
-                            MuscleGroupSettingsRow(
-                                muscleGroup: muscleGroup,
-                                dataManager: dataManager
-                            )
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Recovery Settings")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Done") {
-                        dismiss()
-                    }
-                    .foregroundColor(dataManager.settings.highlightColor.color)
-                }
-            }
-        }
-    }
-}
-
-struct MuscleGroupSettingsRow: View {
-    let muscleGroup: MuscleGroup
-    @ObservedObject var dataManager: DataManager
-
-    private var isEnabled: Bool {
-        dataManager.muscleGroupData[muscleGroup]?.isEnabled ?? true
-    }
-
-    private var cooldownDays: Double {
-        dataManager.muscleGroupData[muscleGroup]?.cooldownDays ?? 3.0
-    }
-
-    private var cooldownText: String {
-        let days = Int(cooldownDays)
-        return days == 1 ? "1 day" : "\(days) days"
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Toggle row
-            Toggle(isOn: Binding(
-                get: { isEnabled },
-                set: { dataManager.updateMuscleGroupEnabled(muscleGroup, enabled: $0) }
-            )) {
-                Text(muscleGroup.rawValue)
-                    .foregroundColor(isEnabled ? .primary : .secondary)
-            }
-            .tint(dataManager.settings.highlightColor.color)
-
-            // Slider (only show when enabled)
-            if isEnabled {
-                VStack(spacing: 4) {
-                    Slider(
-                        value: Binding(
-                            get: { cooldownDays },
-                            set: { dataManager.updateMuscleGroupCooldown(muscleGroup, days: $0) }
-                        ),
-                        in: 1...14,
-                        step: 1
-                    )
-                    .tint(dataManager.settings.highlightColor.color)
-
-                    Text("Recovery: \(cooldownText)")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 
@@ -1258,6 +1168,75 @@ struct ExerciseRow: View {
             .padding(.vertical, 4)
         }
         .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Frequency Settings Card
+
+struct FrequencySettingsCard: View {
+    let muscleGroup: MuscleGroup
+    @ObservedObject var dataManager: DataManager
+    let highlightColor: Color
+
+    private var isEnabled: Bool {
+        dataManager.muscleGroupData[muscleGroup]?.isEnabled ?? true
+    }
+
+    private var cooldownDays: Double {
+        dataManager.muscleGroupData[muscleGroup]?.cooldownDays ?? 3.0
+    }
+
+    private var goalText: String {
+        let days = Int(cooldownDays)
+        return days == 1 ? "every 1 day" : "every \(days) days"
+    }
+
+    var body: some View {
+        VStack(spacing: 16) {
+            // Header with muscle name and toggle
+            HStack {
+                Text(muscleGroup.rawValue)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { isEnabled },
+                    set: { dataManager.updateMuscleGroupEnabled(muscleGroup, enabled: $0) }
+                ))
+                .tint(highlightColor)
+                .labelsHidden()
+            }
+
+            if isEnabled {
+                VStack(spacing: 8) {
+                    // Goal label
+                    Text("Goal: \(goalText)")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // Slider
+                    Slider(
+                        value: Binding(
+                            get: { cooldownDays },
+                            set: { dataManager.updateMuscleGroupCooldown(muscleGroup, days: $0) }
+                        ),
+                        in: 1...14,
+                        step: 1
+                    )
+                    .tint(highlightColor)
+                }
+            }
+        }
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color(.secondarySystemBackground))
+                .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: -2)
+        )
+        .padding(.horizontal, 16)
     }
 }
 
