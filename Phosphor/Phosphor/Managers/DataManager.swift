@@ -163,6 +163,15 @@ class DataManager: ObservableObject {
         }
     }
 
+    func updateWeight(_ weight: Double?) {
+        settings.weight = weight
+        saveLocalData()
+
+        Task {
+            await syncSettingsToCloud()
+        }
+    }
+
     // MARK: - iCloud Sync
 
     func syncFromCloud() async {

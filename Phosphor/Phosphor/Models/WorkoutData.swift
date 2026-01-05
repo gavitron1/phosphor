@@ -49,17 +49,19 @@ struct UserSettings: Codable {
     var cooldownDays: Double
     var gender: Gender
     var appearanceMode: AppearanceMode
+    var weight: Double?  // Weight in pounds
 
     // Computed property for backwards compatibility and convenience
     var darkMode: Bool {
         appearanceMode == .dark
     }
 
-    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, appearanceMode: AppearanceMode = .system) {
+    init(highlightColor: CodableColor = CodableColor(color: .orange), cooldownDays: Double = 3.0, gender: Gender = .male, appearanceMode: AppearanceMode = .system, weight: Double? = nil) {
         self.highlightColor = highlightColor
         self.cooldownDays = cooldownDays
         self.gender = gender
         self.appearanceMode = appearanceMode
+        self.weight = weight
     }
 
     // Custom decoding to handle migration from old darkMode bool
@@ -68,6 +70,7 @@ struct UserSettings: Codable {
         highlightColor = try container.decode(CodableColor.self, forKey: .highlightColor)
         cooldownDays = try container.decode(Double.self, forKey: .cooldownDays)
         gender = try container.decode(Gender.self, forKey: .gender)
+        weight = try container.decodeIfPresent(Double.self, forKey: .weight)
 
         // Try to decode new appearanceMode, fall back to old darkMode
         if let mode = try? container.decode(AppearanceMode.self, forKey: .appearanceMode) {
@@ -86,10 +89,11 @@ struct UserSettings: Codable {
         try container.encode(cooldownDays, forKey: .cooldownDays)
         try container.encode(gender, forKey: .gender)
         try container.encode(appearanceMode, forKey: .appearanceMode)
+        try container.encodeIfPresent(weight, forKey: .weight)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case highlightColor, cooldownDays, gender, appearanceMode, darkMode
+        case highlightColor, cooldownDays, gender, appearanceMode, darkMode, weight
     }
 }
 

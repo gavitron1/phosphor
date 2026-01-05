@@ -9,6 +9,7 @@ struct BodyView: View {
     @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
     @State private var isDragging: Bool = false
     @State private var showCooldownPopover: Bool = false
+    @State private var showWeightInput: Bool = false
 
     // Muscle feedback label state
     @State private var feedbackText: String = ""
@@ -83,6 +84,14 @@ struct BodyView: View {
     private var leastTrained: MuscleGroupData? {
         let sorted = dataManager.getSortedMuscleGroups().filter { $0.tapCount > 0 }
         return sorted.last
+    }
+
+    private var weightDisplayText: String {
+        if let weight = dataManager.settings.weight {
+            return String(format: "%.1f lbs", weight)
+        } else {
+            return "Weight"
+        }
     }
 
     var body: some View {
@@ -275,6 +284,34 @@ struct BodyView: View {
                     .padding(.top, 8)
 
                     Spacer()
+
+                    // Weight button (bottom left)
+                    HStack {
+                        Button(action: {
+                            showWeightInput = true
+                        }) {
+                            Text(weightDisplayText)
+                                .font(.system(size: 16, weight: .semibold))
+                                .foregroundColor(dataManager.settings.highlightColor.color)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 10)
+                        }
+                        .modifier(GlassEffectModifier())
+
+                        Spacer()
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 8)
+                }
+                .sheet(isPresented: $showWeightInput) {
+                    WeightInputView(
+                        currentWeight: dataManager.settings.weight,
+                        highlightColor: dataManager.settings.highlightColor.color,
+                        onSave: { weight in
+                            dataManager.updateWeight(weight)
+                        }
+                    )
+                    .presentationDetents([.medium])
                 }
             }
         }
@@ -609,6 +646,164 @@ struct MuscleStatRow: View {
         guard maxCount > 0 else { return 0 }
         let percentage = CGFloat(data.tapCount) / CGFloat(maxCount)
         return totalWidth * percentage
+    }
+}
+
+// MARK: - Weight Input View
+
+struct WeightInputView: View {
+    let currentWeight: Double?
+    let highlightColor: Color
+    let onSave: (Double?) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var weightString: String = ""
+
+    init(currentWeight: Double?, highlightColor: Color, onSave: @escaping (Double?) -> Void) {
+        self.currentWeight = currentWeight
+        self.highlightColor = highlightColor
+        self.onSave = onSave
+        _weightString = State(initialValue: currentWeight.map { String(format: "%.1f", $0) } ?? "")
+    }
+
+    private var displayWeight: String {
+        if weightString.isEmpty {
+            return "0"
+        }
+        return weightString
+    }
+
+    var body: some View {
+        VStack(spacing: 20) {
+            // Header
+            HStack {
+                Button("Cancel") {
+                    dismiss()
+                }
+                .foregroundColor(.secondary)
+
+                Spacer()
+
+                Text("Weight")
+                    .font(.headline)
+
+                Spacer()
+
+                Button("Save") {
+                    if let weight = Double(weightString), weight > 0 {
+                        onSave(weight)
+                    }
+                    dismiss()
+                }
+                .foregroundColor(highlightColor)
+                .fontWeight(.semibold)
+            }
+            .padding(.horizontal)
+            .padding(.top)
+
+            // Weight display
+            HStack(alignment: .lastTextBaseline, spacing: 4) {
+                Text(displayWeight)
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundColor(.primary)
+                Text("lbs")
+                    .font(.title2)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.vertical, 20)
+
+            // Numpad
+            VStack(spacing: 12) {
+                ForEach(0..<3) { row in
+                    HStack(spacing: 12) {
+                        ForEach(1...3, id: \.self) { col in
+                            let number = row * 3 + col
+                            NumpadButton(label: "\(number)", highlightColor: highlightColor) {
+                                appendDigit("\(number)")
+                            }
+                        }
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    NumpadButton(label: ".", highlightColor: highlightColor) {
+                        appendDecimal()
+                    }
+                    NumpadButton(label: "0", highlightColor: highlightColor) {
+                        appendDigit("0")
+                    }
+                    NumpadButton(systemImage: "delete.left", highlightColor: highlightColor) {
+                        deleteLastDigit()
+                    }
+                }
+            }
+            .padding(.horizontal)
+
+            Spacer()
+        }
+    }
+
+    private func appendDigit(_ digit: String) {
+        // Limit to reasonable weight values
+        if weightString.count < 5 {
+            weightString += digit
+        }
+    }
+
+    private func appendDecimal() {
+        if !weightString.contains(".") {
+            if weightString.isEmpty {
+                weightString = "0."
+            } else {
+                weightString += "."
+            }
+        }
+    }
+
+    private func deleteLastDigit() {
+        if !weightString.isEmpty {
+            weightString.removeLast()
+        }
+    }
+}
+
+struct NumpadButton: View {
+    let label: String?
+    let systemImage: String?
+    let highlightColor: Color
+    let action: () -> Void
+
+    init(label: String, highlightColor: Color, action: @escaping () -> Void) {
+        self.label = label
+        self.systemImage = nil
+        self.highlightColor = highlightColor
+        self.action = action
+    }
+
+    init(systemImage: String, highlightColor: Color, action: @escaping () -> Void) {
+        self.label = nil
+        self.systemImage = systemImage
+        self.highlightColor = highlightColor
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) {
+            Group {
+                if let label = label {
+                    Text(label)
+                        .font(.system(size: 28, weight: .medium))
+                } else if let systemImage = systemImage {
+                    Image(systemName: systemImage)
+                        .font(.system(size: 24, weight: .medium))
+                }
+            }
+            .foregroundColor(.primary)
+            .frame(maxWidth: .infinity)
+            .frame(height: 60)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(12)
+        }
     }
 }
 
