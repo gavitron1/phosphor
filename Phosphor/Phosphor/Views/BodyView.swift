@@ -846,14 +846,7 @@ struct WeightInputView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var weightString: String = ""
-
-    init(currentWeight: Double?, weightUnit: WeightUnit, highlightColor: Color, onSave: @escaping (Double?) -> Void) {
-        self.currentWeight = currentWeight
-        self.weightUnit = weightUnit
-        self.highlightColor = highlightColor
-        self.onSave = onSave
-        _weightString = State(initialValue: currentWeight.map { String(format: "%.1f", $0) } ?? "")
-    }
+    @State private var hasAppeared: Bool = false
 
     private var displayWeight: String {
         if weightString.isEmpty {
@@ -942,6 +935,14 @@ struct WeightInputView: View {
             Spacer()
         }
         .background(Color(.systemBackground))
+        .onAppear {
+            if !hasAppeared {
+                hasAppeared = true
+                if let weight = currentWeight {
+                    weightString = String(format: "%.1f", weight)
+                }
+            }
+        }
     }
 
     private func appendDigit(_ digit: String) {
