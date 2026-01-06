@@ -290,7 +290,7 @@ struct TappableBodyView: View {
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(Rectangle())
-            .gesture(
+            .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
                         let currentLocation = value.location
@@ -300,6 +300,20 @@ struct TappableBodyView: View {
                             longPressStartTime = Date()
                             longPressLocation = currentLocation
                             longPressTriggered = false
+                        }
+
+                        // Check if user moved too far (trying to scroll) - cancel long press
+                        if let startLocation = longPressLocation {
+                            let distance = sqrt(
+                                pow(currentLocation.x - startLocation.x, 2) +
+                                pow(currentLocation.y - startLocation.y, 2)
+                            )
+                            if distance > 10 {
+                                // User is scrolling, cancel long press tracking
+                                longPressStartTime = nil
+                                longPressLocation = nil
+                                return
+                            }
                         }
 
                         // Check if we've held long enough and haven't triggered yet
@@ -314,8 +328,8 @@ struct TappableBodyView: View {
                         }
                     }
                     .onEnded { value in
-                        // Only handle as tap if we didn't trigger a long press
-                        if !longPressTriggered {
+                        // Only handle as tap if we didn't trigger a long press and didn't scroll
+                        if !longPressTriggered && longPressLocation != nil {
                             handleTap(at: value.location, viewSize: geometry.size)
                         }
 
