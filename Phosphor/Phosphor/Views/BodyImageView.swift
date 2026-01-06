@@ -200,9 +200,9 @@ struct TappableBodyView: View {
         Self.gray50
     }
 
-    // Gray color for muscles with no intensity in normal mode
+    // Color for muscles with no intensity in normal mode (white in light, black in dark)
     private var noIntensityColor: Color {
-        Color(red: 0x77/255, green: 0x77/255, blue: 0x77/255).opacity(0.1)
+        darkMode ? .black : .white
     }
 
     // Blend highlight color with base color based on intensity
