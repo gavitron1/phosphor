@@ -151,7 +151,6 @@ struct TappableBodyView: View {
     let cooldownDays: Double  // Added to trigger re-render when cooldown changes
     let getIntensity: (MuscleGroup) -> Double
     let onMuscleGroupTapped: (MuscleGroup) -> Void
-    let onMuscleGroupLongPressed: (MuscleGroup) -> Void
     let isMuscleEnabled: (MuscleGroup) -> Bool
 
     // Frequency edit mode parameters (optional)
@@ -283,20 +282,6 @@ struct TappableBodyView: View {
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(Rectangle())
-            .gesture(
-                LongPressGesture(minimumDuration: 0.5)
-                    .sequenced(before: DragGesture(minimumDistance: 0))
-                    .onEnded { value in
-                        switch value {
-                        case .second(true, let drag):
-                            if let location = drag?.location {
-                                handleLongPress(at: location, viewSize: geometry.size)
-                            }
-                        default:
-                            break
-                        }
-                    }
-            )
             .onTapGesture { location in
                 handleTap(at: location, viewSize: geometry.size)
             }
@@ -337,22 +322,6 @@ struct TappableBodyView: View {
         // If in edit mode and tapped outside all muscles, deselect
         if isFrequencyEditMode {
             onMuscleSelectedForFrequency?(nil)
-        }
-    }
-
-    private func handleLongPress(at point: CGPoint, viewSize: CGSize) {
-        // Disable long press in frequency edit mode
-        if isFrequencyEditMode { return }
-
-        // Check muscle groups from top to bottom (reversed order)
-        for muscleGroup in muscleGroups.reversed() {
-            if let image = muscleImages[muscleGroup],
-               isNonTransparentPixel(at: point, in: image, viewSize: viewSize) {
-                if isMuscleEnabled(muscleGroup) {
-                    onMuscleGroupLongPressed(muscleGroup)
-                }
-                return
-            }
         }
     }
 
@@ -741,7 +710,6 @@ extension UIColor {
         cooldownDays: 3,
         getIntensity: { _ in 0.5 },
         onMuscleGroupTapped: { _ in },
-        onMuscleGroupLongPressed: { _ in },
         isMuscleEnabled: { _ in true }
     )
 }
