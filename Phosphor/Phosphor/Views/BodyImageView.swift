@@ -166,19 +166,39 @@ struct TappableBodyView: View {
     @State private var muscleImages: [MuscleGroup: UIImage] = [:]
 
 
+    // MARK: - Cool Gray Palette (white to black with cool tint)
+    // Slightly more blue for a cool appearance
+    private static let coolWhite = Color(red: 1.0, green: 1.0, blue: 1.0)
+    private static let coolGray10 = Color(red: 0.89, green: 0.90, blue: 0.91)
+    private static let coolGray20 = Color(red: 0.78, green: 0.80, blue: 0.82)
+    private static let coolGray30 = Color(red: 0.67, green: 0.69, blue: 0.73)
+    private static let coolGray40 = Color(red: 0.56, green: 0.59, blue: 0.64)
+    private static let coolGray50 = Color(red: 0.45, green: 0.48, blue: 0.55)
+    private static let coolGray60 = Color(red: 0.35, green: 0.38, blue: 0.45)
+    private static let coolGray70 = Color(red: 0.26, green: 0.28, blue: 0.36)
+    private static let coolGray80 = Color(red: 0.17, green: 0.19, blue: 0.27)
+    private static let coolGray90 = Color(red: 0.09, green: 0.10, blue: 0.18)
+    private static let coolGray100 = Color(red: 0.04, green: 0.05, blue: 0.09)
+    private static let coolBlack = Color(red: 0.0, green: 0.0, blue: 0.0)
+
     // The base color muscles fade to (white in light mode, black in dark mode)
     private var baseColor: Color {
         darkMode ? .black : .white
     }
 
-    // Gray color for disabled muscles
+    // Gray color for disabled muscles (full opacity)
     private var disabledColor: Color {
-        Color.gray.opacity(0.4)
+        darkMode ? Self.coolGray100 : Self.coolGray10
     }
 
-    // Gray color for unselected muscles in frequency edit mode
+    // Gray color for unselected muscles in frequency edit mode (full opacity)
     private var editModeUnselectedColor: Color {
-        Color(red: 0x77/255, green: 0x77/255, blue: 0x77/255).opacity(0.2)
+        darkMode ? Self.coolGray100 : Self.coolGray10
+    }
+
+    // Selected muscle color in frequency edit mode
+    private var editModeSelectedColor: Color {
+        Self.coolGray50
     }
 
     // Gray color for muscles with no intensity in normal mode
@@ -188,10 +208,10 @@ struct TappableBodyView: View {
 
     // Blend highlight color with base color based on intensity
     private func muscleColor(for muscleGroup: MuscleGroup) -> Color {
-        // In frequency edit mode: show selected muscle in highlight, others in light gray
+        // In frequency edit mode: show selected muscle in gray_50, others in gray_10/gray_100
         if isFrequencyEditMode {
             if muscleGroup == selectedMuscleForFrequency {
-                return highlightColor
+                return editModeSelectedColor
             } else {
                 return editModeUnselectedColor
             }

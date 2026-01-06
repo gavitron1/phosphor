@@ -246,78 +246,80 @@ struct BodyView: View {
                         }
                         .frame(height: geometry.size.height)
 
-                        // Statistics section (below the fold)
-                        VStack(spacing: 16) {
-                            Text("Statistics")
-                                .font(.title2)
-                                .fontWeight(.bold)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                        // Statistics section (below the fold) - hidden in frequency edit mode
+                        if !isEditingFrequency {
+                            VStack(spacing: 16) {
+                                Text("Statistics")
+                                    .font(.title2)
+                                    .fontWeight(.bold)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                            // Summary cards
-                            VStack(spacing: 12) {
-                                HStack {
-                                    StatBox(
-                                        title: "Total Taps",
-                                        value: "\(totalTaps)",
-                                        icon: "hand.tap.fill",
-                                        color: dataManager.settings.highlightColor.color
-                                    )
+                                // Summary cards
+                                VStack(spacing: 12) {
+                                    HStack {
+                                        StatBox(
+                                            title: "Total Taps",
+                                            value: "\(totalTaps)",
+                                            icon: "hand.tap.fill",
+                                            color: dataManager.settings.highlightColor.color
+                                        )
 
-                                    StatBox(
-                                        title: "Active Muscles",
-                                        value: "\(activeMuscleCount)",
-                                        icon: "flame.fill",
-                                        color: .orange
-                                    )
-                                }
+                                        StatBox(
+                                            title: "Active Muscles",
+                                            value: "\(activeMuscleCount)",
+                                            icon: "flame.fill",
+                                            color: .orange
+                                        )
+                                    }
 
-                                HStack {
-                                    StatBox(
-                                        title: "Most Trained",
-                                        value: mostTrained?.muscleGroup.rawValue ?? "None",
-                                        icon: "trophy.fill",
-                                        color: .yellow
-                                    )
+                                    HStack {
+                                        StatBox(
+                                            title: "Most Trained",
+                                            value: mostTrained?.muscleGroup.rawValue ?? "None",
+                                            icon: "trophy.fill",
+                                            color: .yellow
+                                        )
 
-                                    StatBox(
-                                        title: "Needs Work",
-                                        value: leastTrained?.muscleGroup.rawValue ?? "None",
-                                        icon: "exclamationmark.triangle.fill",
-                                        color: .red
-                                    )
-                                }
-                            }
-
-                            // Muscle groups list
-                            VStack(spacing: 12) {
-                                HStack {
-                                    Text("Muscle Groups")
-                                        .font(.headline)
-                                    Spacer()
-                                    Text("Tap Count")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
-                                }
-                                .padding(.horizontal, 4)
-
-                                LazyVStack(spacing: 8) {
-                                    ForEach(dataManager.getSortedMuscleGroups()) { data in
-                                        MuscleStatRow(
-                                            data: data,
-                                            maxCount: dataManager.getMaxTapCount(),
-                                            highlightColor: dataManager.settings.highlightColor.color,
-                                            cooldownDays: dataManager.settings.cooldownDays
+                                        StatBox(
+                                            title: "Needs Work",
+                                            value: leastTrained?.muscleGroup.rawValue ?? "None",
+                                            icon: "exclamationmark.triangle.fill",
+                                            color: .red
                                         )
                                     }
                                 }
+
+                                // Muscle groups list
+                                VStack(spacing: 12) {
+                                    HStack {
+                                        Text("Muscle Groups")
+                                            .font(.headline)
+                                        Spacer()
+                                        Text("Tap Count")
+                                            .font(.subheadline)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    .padding(.horizontal, 4)
+
+                                    LazyVStack(spacing: 8) {
+                                        ForEach(dataManager.getSortedMuscleGroups()) { data in
+                                            MuscleStatRow(
+                                                data: data,
+                                                maxCount: dataManager.getMaxTapCount(),
+                                                highlightColor: dataManager.settings.highlightColor.color,
+                                                cooldownDays: dataManager.settings.cooldownDays
+                                            )
+                                        }
+                                    }
+                                }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color(.secondarySystemBackground))
+                                )
                             }
                             .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .fill(Color(.secondarySystemBackground))
-                            )
                         }
-                        .padding()
                     }
                 }
                 .scrollDisabled(isEditingFrequency)
