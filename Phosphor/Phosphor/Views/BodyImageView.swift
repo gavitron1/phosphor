@@ -165,6 +165,12 @@ struct TappableBodyView: View {
     // Cache loaded images for hit testing
     @State private var muscleImages: [MuscleGroup: UIImage] = [:]
 
+    // Long press tracking state
+    @State private var longPressStartTime: Date? = nil
+    @State private var longPressLocation: CGPoint? = nil
+    @State private var longPressTriggered: Bool = false
+    private let longPressDuration: TimeInterval = 0.5
+
 
     // MARK: - Neutral Gray Palette (white to black)
     private static let gray00 = Color(red: 1.0, green: 1.0, blue: 1.0)      // white
@@ -285,23 +291,38 @@ struct TappableBodyView: View {
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(Rectangle())
             .gesture(
-                SpatialTapGesture()
-                    .onEnded { value in
-                        handleTap(at: value.location, viewSize: geometry.size)
-                    }
-            )
-            .simultaneousGesture(
-                LongPressGesture(minimumDuration: 0.5)
-                    .sequenced(before: SpatialTapGesture())
-                    .onEnded { value in
-                        switch value {
-                        case .second(true, let tapValue):
-                            if let location = tapValue?.location {
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        let currentLocation = value.location
+
+                        // If this is a new touch, start tracking
+                        if longPressStartTime == nil {
+                            longPressStartTime = Date()
+                            longPressLocation = currentLocation
+                            longPressTriggered = false
+                        }
+
+                        // Check if we've held long enough and haven't triggered yet
+                        if let startTime = longPressStartTime,
+                           !longPressTriggered,
+                           Date().timeIntervalSince(startTime) >= longPressDuration {
+                            // Trigger long press immediately
+                            if let location = longPressLocation {
                                 handleLongPress(at: location, viewSize: geometry.size)
                             }
-                        default:
-                            break
+                            longPressTriggered = true
                         }
+                    }
+                    .onEnded { value in
+                        // Only handle as tap if we didn't trigger a long press
+                        if !longPressTriggered {
+                            handleTap(at: value.location, viewSize: geometry.size)
+                        }
+
+                        // Reset state
+                        longPressStartTime = nil
+                        longPressLocation = nil
+                        longPressTriggered = false
                     }
             )
             .onAppear {
