@@ -107,6 +107,42 @@ struct BodyView: View {
         return sorted.last
     }
 
+    /// Muscle groups that need attention (intensity below 20% or never activated)
+    private var muscleGroupsNeedingWork: [MuscleGroup] {
+        dataManager.muscleGroupData.values
+            .filter { $0.isEnabled }
+            .sorted { $0.intensity() < $1.intensity() }
+            .prefix(5)
+            .map { $0.muscleGroup }
+    }
+
+    /// Recommended exercises based on muscle groups that need work
+    private var recommendedExercises: [Exercise] {
+        let needsWork = muscleGroupsNeedingWork
+        var recommendations: [Exercise] = []
+        var usedExerciseIds = Set<String>()
+
+        // Get exercises for each muscle group needing work
+        for muscleGroup in needsWork {
+            let exercises = ExerciseDatabase.exercises.filter { exercise in
+                exercise.muscleGroups.contains(muscleGroup) && !usedExerciseIds.contains(exercise.id)
+            }
+            if let exercise = exercises.first {
+                recommendations.append(exercise)
+                usedExerciseIds.insert(exercise.id)
+            }
+            if recommendations.count >= 5 { break }
+        }
+
+        return recommendations
+    }
+
+    private var todayDateString: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMM d"
+        return formatter.string(from: Date())
+    }
+
     private var weightDisplayText: String {
         if let weight = dataManager.settings.weight {
             let unit = dataManager.settings.weightUnit.rawValue
@@ -248,77 +284,80 @@ struct BodyView: View {
                         }
                         .frame(height: geometry.size.height)
 
-                        // Statistics section (below the fold) - hidden in frequency edit mode
+                        // Below the fold sections - hidden in frequency edit mode
                         if !isEditingFrequency {
-                            VStack(spacing: 16) {
-                                Text("Statistics")
-                                    .font(.title2)
-                                    .fontWeight(.bold)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                                // Summary cards
-                                VStack(spacing: 12) {
-                                    HStack {
-                                        StatBox(
-                                            title: "Total Taps",
-                                            value: "\(totalTaps)",
-                                            icon: "hand.tap.fill",
-                                            color: dataManager.settings.highlightColor.color
-                                        )
-
-                                        StatBox(
-                                            title: "Active Muscles",
-                                            value: "\(activeMuscleCount)",
-                                            icon: "flame.fill",
-                                            color: .orange
-                                        )
-                                    }
-
-                                    HStack {
-                                        StatBox(
-                                            title: "Most Trained",
-                                            value: mostTrained?.muscleGroup.rawValue ?? "None",
-                                            icon: "trophy.fill",
-                                            color: .yellow
-                                        )
-
-                                        StatBox(
-                                            title: "Needs Work",
-                                            value: leastTrained?.muscleGroup.rawValue ?? "None",
-                                            icon: "exclamationmark.triangle.fill",
-                                            color: .red
-                                        )
-                                    }
-                                }
-
-                                // Muscle groups list
-                                VStack(spacing: 12) {
-                                    HStack {
-                                        Text("Muscle Groups")
-                                            .font(.headline)
-                                        Spacer()
-                                        Text("Tap Count")
+                            VStack(spacing: 24) {
+                                // Recommended Exercises section
+                                VStack(alignment: .leading, spacing: 12) {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Recommended Exercises")
+                                            .font(.title2)
+                                            .fontWeight(.bold)
+                                        Text(todayDateString)
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                     }
-                                    .padding(.horizontal, 4)
 
-                                    LazyVStack(spacing: 8) {
-                                        ForEach(dataManager.getSortedMuscleGroups()) { data in
-                                            MuscleStatRow(
-                                                data: data,
-                                                maxCount: dataManager.getMaxTapCount(),
-                                                highlightColor: dataManager.settings.highlightColor.color,
-                                                cooldownDays: dataManager.settings.cooldownDays
-                                            )
+                                    if recommendedExercises.isEmpty {
+                                        Text("Great job! All muscle groups are active.")
+                                            .font(.body)
+                                            .foregroundColor(.secondary)
+                                            .padding(.vertical, 20)
+                                    } else {
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 12) {
+                                                ForEach(recommendedExercises) { exercise in
+                                                    RecommendedExerciseCard(
+                                                        exercise: exercise,
+                                                        highlightColor: dataManager.settings.highlightColor.color,
+                                                        onTap: {
+                                                            activateExerciseMuscles(exercise)
+                                                            dataManager.recordExercise(exercise)
+                                                        }
+                                                    )
+                                                }
+                                            }
+                                            .padding(.horizontal, 4)
                                         }
                                     }
                                 }
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color(.secondarySystemBackground))
-                                )
+
+                                // Statistics section
+                                VStack(spacing: 16) {
+                                    Text("Statistics")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    // Muscle groups list
+                                    VStack(spacing: 12) {
+                                        HStack {
+                                            Text("Muscle Groups")
+                                                .font(.headline)
+                                            Spacer()
+                                            Text("Tap Count")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .padding(.horizontal, 4)
+
+                                        LazyVStack(spacing: 8) {
+                                            ForEach(dataManager.getSortedMuscleGroups()) { data in
+                                                MuscleStatRow(
+                                                    data: data,
+                                                    maxCount: dataManager.getMaxTapCount(),
+                                                    highlightColor: dataManager.settings.highlightColor.color,
+                                                    cooldownDays: dataManager.settings.cooldownDays
+                                                )
+                                            }
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color(.secondarySystemBackground))
+                                    )
+                                }
                             }
                             .padding()
                         }
@@ -1181,6 +1220,53 @@ struct ExerciseRow: View {
                 }
             }
             .padding(.vertical, 4)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Recommended Exercise Card
+
+struct RecommendedExerciseCard: View {
+    let exercise: Exercise
+    let highlightColor: Color
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(exercise.name)
+                    .font(.headline)
+                    .fontWeight(.semibold)
+                    .foregroundColor(.primary)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+
+                Spacer()
+
+                // Show primary muscle groups
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(exercise.muscleGroups.prefix(2), id: \.self) { muscle in
+                        Text(muscle.rawValue)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+
+                // Tap to activate indicator
+                HStack {
+                    Spacer()
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(highlightColor)
+                }
+            }
+            .padding(16)
+            .frame(width: 160, height: 140)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color(.secondarySystemBackground))
+            )
         }
         .buttonStyle(.plain)
     }
