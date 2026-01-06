@@ -29,6 +29,9 @@ struct BodyView: View {
     @State private var isEditingFrequency: Bool = false
     @State private var selectedMuscleForFrequency: MuscleGroup?
 
+    // Dismissed recommendations (reset daily)
+    @State private var dismissedExerciseIds: Set<String> = []
+
     // Dynamic capsule state
     @State private var feedbackText: String = ""
     @State private var capsuleMode: CapsuleDisplayMode = .weight
@@ -122,10 +125,12 @@ struct BodyView: View {
         var recommendations: [Exercise] = []
         var usedExerciseIds = Set<String>()
 
-        // Get exercises for each muscle group needing work
+        // Get exercises for each muscle group needing work (excluding dismissed)
         for muscleGroup in needsWork {
             let exercises = ExerciseDatabase.exercises.filter { exercise in
-                exercise.muscleGroups.contains(muscleGroup) && !usedExerciseIds.contains(exercise.id)
+                exercise.muscleGroups.contains(muscleGroup) &&
+                !usedExerciseIds.contains(exercise.id) &&
+                !dismissedExerciseIds.contains(exercise.id)
             }
             if let exercise = exercises.first {
                 recommendations.append(exercise)
@@ -310,9 +315,15 @@ struct BodyView: View {
                                                     RecommendedExerciseCard(
                                                         exercise: exercise,
                                                         highlightColor: dataManager.settings.highlightColor.color,
-                                                        onTap: {
+                                                        onActivate: {
                                                             activateExerciseMuscles(exercise)
                                                             dataManager.recordExercise(exercise)
+                                                            dismissedExerciseIds.insert(exercise.id)
+                                                        },
+                                                        onDismiss: {
+                                                            withAnimation {
+                                                                dismissedExerciseIds.insert(exercise.id)
+                                                            }
                                                         }
                                                     )
                                                 }
@@ -1230,9 +1241,12 @@ struct ExerciseRow: View {
 struct RecommendedExerciseCard: View {
     let exercise: Exercise
     let highlightColor: Color
-    let onTap: () -> Void
+    let onActivate: () -> Void
+    let onDismiss: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var sets: Int = 3
+    @State private var reps: Int = 10
 
     // Gray colors matching the palette
     private var cardBackground: Color {
@@ -1242,44 +1256,122 @@ struct RecommendedExerciseCard: View {
     }
 
     var body: some View {
-        Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 0) {
-                // Exercise name anchored to top
+        VStack(alignment: .leading, spacing: 12) {
+            // Header with exercise name and dismiss button
+            HStack(alignment: .top) {
                 Text(exercise.name)
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer()
 
-                // Show primary muscle groups
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(exercise.muscleGroups.prefix(2), id: \.self) { muscle in
-                        Text(muscle.rawValue)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(.secondary)
+                        .padding(6)
+                        .background(Circle().fill(Color(.systemBackground).opacity(0.8)))
+                }
+            }
+
+            // Muscle groups
+            HStack(spacing: 6) {
+                ForEach(exercise.muscleGroups.prefix(2), id: \.self) { muscle in
+                    Text(muscle.rawValue)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            }
+
+            Spacer()
+
+            // Sets and Reps controls
+            HStack(spacing: 16) {
+                // Sets control
+                VStack(spacing: 4) {
+                    Text("Sets")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        Button {
+                            if sets > 1 { sets -= 1 }
+                        } label: {
+                            Image(systemName: "minus")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(highlightColor)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(highlightColor.opacity(0.15)))
+                        }
+
+                        Text("\(sets)")
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .frame(width: 24)
+
+                        Button {
+                            if sets < 10 { sets += 1 }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(highlightColor)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(highlightColor.opacity(0.15)))
+                        }
                     }
                 }
 
-                // Tap to activate indicator
-                HStack {
-                    Spacer()
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title2)
+                // Reps control
+                VStack(spacing: 4) {
+                    Text("Reps")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        Button {
+                            if reps > 1 { reps -= 1 }
+                        } label: {
+                            Image(systemName: "minus")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(highlightColor)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(highlightColor.opacity(0.15)))
+                        }
+
+                        Text("\(reps)")
+                            .font(.body)
+                            .fontWeight(.semibold)
+                            .frame(width: 24)
+
+                        Button {
+                            if reps < 30 { reps += 1 }
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundColor(highlightColor)
+                                .frame(width: 24, height: 24)
+                                .background(Circle().fill(highlightColor.opacity(0.15)))
+                        }
+                    }
+                }
+
+                Spacer()
+
+                // Activate button
+                Button(action: onActivate) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title)
                         .foregroundColor(highlightColor)
                 }
             }
-            .padding(16)
-            .frame(width: 160, height: 140)
-            .background(
-                RoundedRectangle(cornerRadius: 16)
-                    .fill(cardBackground)
-            )
         }
-        .buttonStyle(.plain)
+        .padding(16)
+        .frame(width: 220, height: 180)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(cardBackground)
+        )
     }
 }
 
