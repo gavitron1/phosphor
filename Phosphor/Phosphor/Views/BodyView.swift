@@ -18,11 +18,8 @@ struct BodyView: View {
     @ObservedObject var notificationManager = NotificationManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
-    // Gray palette
-    private var gray10: Color { Color(red: 0.90, green: 0.90, blue: 0.90) }
-
     private var backgroundColor: Color {
-        colorScheme == .dark ? Color(.systemGroupedBackground) : gray10
+        colorScheme == .dark ? Color(.systemGroupedBackground) : .white
     }
 
     @State private var currentSide: BodySide = .front
@@ -288,24 +285,35 @@ struct BodyView: View {
                                         ScrollView(.horizontal, showsIndicators: false) {
                                             HStack(spacing: 12) {
                                                 ForEach(todaysExercises) { exercise in
-                                                    RecommendedExerciseCard(
-                                                        exercise: exercise,
-                                                        highlightColor: dataManager.settings.highlightColor.color,
-                                                        onActivate: {
-                                                            activateExerciseMuscles(exercise)
-                                                            dataManager.recordExercise(exercise)
-                                                            dataManager.completeRecommendedExercise(exercise.id)
-                                                        },
-                                                        onDismiss: {
-                                                            withAnimation {
-                                                                dataManager.dismissRecommendedExercise(exercise.id)
+                                                    GeometryReader { cardGeometry in
+                                                        let cardFrame = cardGeometry.frame(in: .global)
+                                                        let screenCenter = UIScreen.main.bounds.width / 2
+                                                        let cardCenter = cardFrame.midX
+                                                        let distance = abs(cardCenter - screenCenter)
+                                                        let opacity = distance > 50 ? 0.5 : 1.0
+
+                                                        RecommendedExerciseCard(
+                                                            exercise: exercise,
+                                                            highlightColor: dataManager.settings.highlightColor.color,
+                                                            gender: dataManager.settings.gender,
+                                                            darkMode: effectiveDarkMode,
+                                                            onActivate: {
+                                                                activateExerciseMuscles(exercise)
+                                                                dataManager.recordExercise(exercise)
+                                                                dataManager.completeRecommendedExercise(exercise.id)
+                                                            },
+                                                            onDismiss: {
+                                                                withAnimation {
+                                                                    dataManager.dismissRecommendedExercise(exercise.id)
+                                                                }
                                                             }
-                                                        }
-                                                    )
-                                                    .frame(width: geometry.size.width - 56)
+                                                        )
+                                                        .opacity(opacity)
+                                                    }
+                                                    .frame(width: geometry.size.width - 96, height: 120)
                                                 }
                                             }
-                                            .padding(.horizontal, 16)
+                                            .padding(.horizontal, 48)
                                             .scrollTargetLayout()
                                         }
                                         .scrollTargetBehavior(.viewAligned)
@@ -1214,17 +1222,60 @@ struct ExerciseRow: View {
     }
 }
 
+// MARK: - Body Region for Exercise
+
+enum BodyRegion {
+    case upper
+    case lower
+    case core
+    case full
+
+    static func from(muscleGroups: [MuscleGroup]) -> BodyRegion {
+        let upperMuscles: Set<MuscleGroup> = [.chest, .biceps, .triceps, .shoulders, .traps, .lats, .outerback, .forearms, .wrists, .neck]
+        let lowerMuscles: Set<MuscleGroup> = [.thighs, .hamstrings, .glutes, .calves, .innerthigh, .outerthigh]
+        let coreMuscles: Set<MuscleGroup> = [.abs, .obliques, .lowerback]
+
+        let muscleSet = Set(muscleGroups)
+        let hasUpper = !muscleSet.intersection(upperMuscles).isEmpty
+        let hasLower = !muscleSet.intersection(lowerMuscles).isEmpty
+        let hasCore = !muscleSet.intersection(coreMuscles).isEmpty
+
+        // If strictly core (no upper or lower)
+        if hasCore && !hasUpper && !hasLower {
+            return .core
+        }
+        // If has lower body muscles
+        if hasLower && !hasUpper {
+            return .lower
+        }
+        // If has upper body muscles
+        if hasUpper && !hasLower {
+            return .upper
+        }
+        // Mixed or cardio - show full body
+        return .full
+    }
+}
+
 // MARK: - Recommended Exercise Card
 
 struct RecommendedExerciseCard: View {
     let exercise: Exercise
     let highlightColor: Color
+    let gender: Gender
+    let darkMode: Bool
     let onActivate: () -> Void
     let onDismiss: () -> Void
 
     @Environment(\.colorScheme) private var colorScheme
+    @State private var isEditing: Bool = false
     @State private var sets: Int = 3
     @State private var reps: Int = 10
+    @State private var weight: Int = 0
+
+    private let cardCornerRadius: CGFloat = 16
+    private let bodySquareSize: CGFloat = 96
+    private let bodySquareInset: CGFloat = 12
 
     private var cardBackground: Color {
         colorScheme == .dark
@@ -1232,120 +1283,238 @@ struct RecommendedExerciseCard: View {
             : .white
     }
 
+    private var bodySquareBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.1, green: 0.1, blue: 0.1)
+            : Color(red: 0.95, green: 0.95, blue: 0.95)
+    }
+
+    private var equipmentText: String {
+        exercise.equipment.rawValue
+    }
+
+    private var needsWeight: Bool {
+        switch exercise.equipment {
+        case .barbell, .dumbbell, .kettlebell, .ezBar, .cable, .machine:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var bodyRegion: BodyRegion {
+        BodyRegion.from(muscleGroups: exercise.muscleGroups)
+    }
+
+    private var checkmarkColor: Color {
+        colorScheme == .dark ? .black : .white
+    }
+
+    // Offset to show relevant portion of body based on exercise type
+    // Body is 176pt tall (88 * 2), showing in 88pt window (bodySquareSize - 8)
+    // Upper: show top 50% -> shift body down so top is visible
+    // Lower: show bottom 50% -> shift body up so bottom is visible
+    // Core: show middle 50% -> no offset needed
+    private var bodyOffset: CGFloat {
+        switch bodyRegion {
+        case .upper:
+            return 44  // Shift down to show upper body
+        case .lower:
+            return -44 // Shift up to show lower body
+        case .core:
+            return 0   // Center shows core
+        case .full:
+            return 0   // Centered
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Header with exercise name and dismiss button
-            HStack(alignment: .top) {
-                Text(exercise.name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.leading)
+        HStack(spacing: 12) {
+            // Left side: Mini body view in rounded square
+            ZStack {
+                RoundedRectangle(cornerRadius: cardCornerRadius - bodySquareInset / 2)
+                    .fill(bodySquareBackground)
+                    .frame(width: bodySquareSize, height: bodySquareSize)
 
-                Spacer()
-
-                Button(action: onDismiss) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(.secondary)
-                        .padding(6)
-                        .background(Circle().fill(Color(.systemBackground).opacity(0.8)))
-                }
-            }
-
-            // Muscle groups
-            HStack(spacing: 6) {
-                ForEach(exercise.muscleGroups.prefix(2), id: \.self) { muscle in
-                    Text(muscle.rawValue)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-            }
-
-            Spacer()
-
-            // Sets and Reps controls
-            HStack(spacing: 16) {
-                // Sets control
-                VStack(spacing: 4) {
-                    Text("Sets")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    HStack(spacing: 8) {
-                        Button {
-                            if sets > 1 { sets -= 1 }
-                        } label: {
-                            Image(systemName: "minus")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(highlightColor)
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(highlightColor.opacity(0.15)))
-                        }
-
-                        Text("\(sets)")
-                            .font(.body)
-                            .fontWeight(.semibold)
-                            .frame(width: 24)
-
-                        Button {
-                            if sets < 10 { sets += 1 }
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(highlightColor)
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(highlightColor.opacity(0.15)))
-                        }
+                // Body with clipping based on region - fills width of square
+                MiniBodyView(
+                    gender: gender,
+                    side: .front,
+                    highlightColor: highlightColor,
+                    darkMode: darkMode,
+                    getIntensity: { group in
+                        exercise.muscleGroups.contains(group) ? 1.0 : 0.0
                     }
-                }
+                )
+                .frame(width: bodySquareSize - 8, height: (bodySquareSize - 8) * 2)
+                .offset(y: bodyOffset)
+                .frame(width: bodySquareSize - 8, height: bodySquareSize - 8)
+                .clipped()
+            }
 
-                // Reps control
-                VStack(spacing: 4) {
-                    Text("Reps")
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    HStack(spacing: 8) {
-                        Button {
-                            if reps > 1 { reps -= 1 }
-                        } label: {
-                            Image(systemName: "minus")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(highlightColor)
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(highlightColor.opacity(0.15)))
-                        }
-
-                        Text("\(reps)")
-                            .font(.body)
+            // Right side: Exercise details
+            VStack(alignment: .leading, spacing: 6) {
+                // Header with exercise name and buttons
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(exercise.name)
+                            .font(.headline)
                             .fontWeight(.semibold)
-                            .frame(width: 24)
+                            .foregroundColor(.primary)
+                            .lineLimit(2)
+                            .multilineTextAlignment(.leading)
 
-                        Button {
-                            if reps < 30 { reps += 1 }
-                        } label: {
-                            Image(systemName: "plus")
-                                .font(.system(size: 10, weight: .bold))
-                                .foregroundColor(highlightColor)
-                                .frame(width: 24, height: 24)
-                                .background(Circle().fill(highlightColor.opacity(0.15)))
-                        }
+                        // Equipment indicator
+                        Text(equipmentText)
+                            .font(.caption)
+                            .fontWeight(.medium)
+                            .foregroundColor(highlightColor)
+                    }
+
+                    Spacer()
+
+                    // Edit button
+                    Button {
+                        isEditing.toggle()
+                    } label: {
+                        Image(systemName: "pencil")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(6)
+                            .background(Circle().fill(Color(.systemGray5)))
+                    }
+
+                    // Dismiss button
+                    Button(action: onDismiss) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(.secondary)
+                            .padding(6)
+                            .background(Circle().fill(Color(.systemGray5)))
                     }
                 }
 
                 Spacer()
 
-                // Activate button
-                Button(action: onActivate) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.title)
-                        .foregroundColor(highlightColor)
+                // Controls and complete button row
+                HStack(spacing: 16) {
+                    // Sets display/control
+                    VStack(spacing: 2) {
+                        if isEditing {
+                            HStack(spacing: 4) {
+                                Button {
+                                    if sets > 1 { sets -= 1 }
+                                } label: {
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text("\(sets)")
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .frame(minWidth: 28)
+
+                                Button {
+                                    if sets < 10 { sets += 1 }
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        } else {
+                            Text("\(sets)")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                        }
+                        Text("sets")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Reps display/control
+                    VStack(spacing: 2) {
+                        if isEditing {
+                            HStack(spacing: 4) {
+                                Button {
+                                    if reps > 1 { reps -= 1 }
+                                } label: {
+                                    Image(systemName: "minus")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                }
+
+                                Text("\(reps)")
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                                    .frame(minWidth: 28)
+
+                                Button {
+                                    if reps < 30 { reps += 1 }
+                                } label: {
+                                    Image(systemName: "plus")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        } else {
+                            Text("\(reps)")
+                                .font(.system(size: 24, weight: .bold, design: .rounded))
+                        }
+                        Text("reps")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+
+                    // Weight display/control (if applicable)
+                    if needsWeight {
+                        VStack(spacing: 2) {
+                            if isEditing {
+                                HStack(spacing: 4) {
+                                    Button {
+                                        if weight >= 5 { weight -= 5 }
+                                    } label: {
+                                        Image(systemName: "minus")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+
+                                    Text("\(weight)")
+                                        .font(.system(size: 24, weight: .bold, design: .rounded))
+                                        .frame(minWidth: 36)
+
+                                    Button {
+                                        if weight < 500 { weight += 5 }
+                                    } label: {
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 10, weight: .bold))
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            } else {
+                                Text("\(weight)")
+                                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                            }
+                            Text("lbs")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+
+                    Spacer()
+
+                    // Complete button (circle icon)
+                    Button(action: onActivate) {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 20, weight: .bold))
+                            .foregroundColor(checkmarkColor)
+                            .frame(width: 48, height: 48)
+                            .background(Circle().fill(highlightColor))
+                    }
                 }
             }
         }
-        .padding(20)
+        .padding(bodySquareInset)
         .frame(maxWidth: .infinity)
-        .frame(height: 200)
+        .frame(height: bodySquareSize + bodySquareInset * 2)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(cardBackground)

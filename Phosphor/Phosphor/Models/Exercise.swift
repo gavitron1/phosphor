@@ -1,24 +1,44 @@
 import Foundation
 
+enum Equipment: String, Codable, CaseIterable {
+    case bodyweight = "Bodyweight"
+    case barbell = "Barbell"
+    case dumbbell = "Dumbbell"
+    case cable = "Cable"
+    case machine = "Machine"
+    case kettlebell = "Kettlebell"
+    case ezBar = "EZ-Bar"
+    case plate = "Plate"
+    case bench = "Bench"
+    case pullUpBar = "Pull-Up Bar"
+    case resistanceBand = "Resistance Band"
+    case abWheel = "Ab Wheel"
+    case cardioMachine = "Cardio Machine"
+    case other = "Other"
+}
+
 struct Exercise: Identifiable, Codable {
     let id: String
     let name: String
     let muscleWork: [MuscleGroup: Double]  // Muscle group -> percentage (0.0 to 1.0)
     let category: ExerciseCategory
+    let equipment: Equipment
 
-    init(id: String = UUID().uuidString, name: String, muscleWork: [MuscleGroup: Double], category: ExerciseCategory) {
+    init(id: String = UUID().uuidString, name: String, muscleWork: [MuscleGroup: Double], category: ExerciseCategory, equipment: Equipment = .bodyweight) {
         self.id = id
         self.name = name
         self.muscleWork = muscleWork
         self.category = category
+        self.equipment = equipment
     }
 
     /// Convenience initializer with all muscles at 100%
-    init(id: String = UUID().uuidString, name: String, muscleGroups: [MuscleGroup], category: ExerciseCategory) {
+    init(id: String = UUID().uuidString, name: String, muscleGroups: [MuscleGroup], category: ExerciseCategory, equipment: Equipment = .bodyweight) {
         self.id = id
         self.name = name
         self.muscleWork = Dictionary(uniqueKeysWithValues: muscleGroups.map { ($0, 1.0) })
         self.category = category
+        self.equipment = equipment
     }
 
     /// Returns all muscle groups worked by this exercise
@@ -53,210 +73,210 @@ enum ExerciseCategory: String, Codable, CaseIterable {
 struct ExerciseDatabase {
     static let exercises: [Exercise] = [
         // CHEST EXERCISES
-        Exercise(id: "bench-press", name: "Bench Press", muscleGroups: [.chest, .triceps, .shoulders], category: .chest),
-        Exercise(id: "incline-bench-press", name: "Incline Bench Press", muscleGroups: [.chest, .shoulders, .triceps], category: .chest),
-        Exercise(id: "decline-bench-press", name: "Decline Bench Press", muscleGroups: [.chest, .triceps], category: .chest),
-        Exercise(id: "dumbbell-flyes", name: "Dumbbell Flyes", muscleGroups: [.chest, .shoulders], category: .chest),
-        Exercise(id: "cable-crossover", name: "Cable Crossover", muscleGroups: [.chest], category: .chest),
-        Exercise(id: "push-ups", name: "Push-Ups", muscleGroups: [.chest, .triceps, .shoulders, .abs], category: .chest),
-        Exercise(id: "chest-dips", name: "Chest Dips", muscleGroups: [.chest, .triceps, .shoulders], category: .chest),
-        Exercise(id: "dumbbell-press", name: "Dumbbell Press", muscleGroups: [.chest, .triceps, .shoulders], category: .chest),
-        Exercise(id: "machine-chest-press", name: "Machine Chest Press", muscleGroups: [.chest, .triceps], category: .chest),
-        Exercise(id: "pec-deck", name: "Pec Deck", muscleGroups: [.chest], category: .chest),
+        Exercise(id: "bench-press", name: "Bench Press", muscleGroups: [.chest, .triceps, .shoulders], category: .chest, equipment: .barbell),
+        Exercise(id: "incline-bench-press", name: "Incline Bench Press", muscleGroups: [.chest, .shoulders, .triceps], category: .chest, equipment: .barbell),
+        Exercise(id: "decline-bench-press", name: "Decline Bench Press", muscleGroups: [.chest, .triceps], category: .chest, equipment: .barbell),
+        Exercise(id: "dumbbell-flyes", name: "Dumbbell Flyes", muscleGroups: [.chest, .shoulders], category: .chest, equipment: .dumbbell),
+        Exercise(id: "cable-crossover", name: "Cable Crossover", muscleGroups: [.chest], category: .chest, equipment: .cable),
+        Exercise(id: "push-ups", name: "Push-Ups", muscleGroups: [.chest, .triceps, .shoulders, .abs], category: .chest, equipment: .bodyweight),
+        Exercise(id: "chest-dips", name: "Chest Dips", muscleGroups: [.chest, .triceps, .shoulders], category: .chest, equipment: .bodyweight),
+        Exercise(id: "dumbbell-press", name: "Dumbbell Press", muscleGroups: [.chest, .triceps, .shoulders], category: .chest, equipment: .dumbbell),
+        Exercise(id: "machine-chest-press", name: "Machine Chest Press", muscleGroups: [.chest, .triceps], category: .chest, equipment: .machine),
+        Exercise(id: "pec-deck", name: "Pec Deck", muscleGroups: [.chest], category: .chest, equipment: .machine),
 
         // BACK EXERCISES
-        Exercise(id: "deadlift", name: "Deadlift", muscleGroups: [.lowerback, .glutes, .hamstrings, .traps, .lats], category: .back),
-        Exercise(id: "barbell-row", name: "Barbell Row", muscleGroups: [.lats, .outerback, .biceps, .traps], category: .back),
-        Exercise(id: "pull-ups", name: "Pull-Ups", muscleGroups: [.lats, .biceps, .outerback, .forearms], category: .back),
-        Exercise(id: "chin-ups", name: "Chin-Ups", muscleGroups: [.lats, .biceps, .outerback], category: .back),
-        Exercise(id: "lat-pulldown", name: "Lat Pulldown", muscleGroups: [.lats, .biceps, .outerback], category: .back),
-        Exercise(id: "seated-cable-row", name: "Seated Cable Row", muscleGroups: [.lats, .outerback, .biceps, .traps], category: .back),
-        Exercise(id: "single-arm-row", name: "Single Arm Dumbbell Row", muscleGroups: [.lats, .outerback, .biceps], category: .back),
-        Exercise(id: "t-bar-row", name: "T-Bar Row", muscleGroups: [.lats, .outerback, .traps, .biceps], category: .back),
-        Exercise(id: "face-pulls", name: "Face Pulls", muscleGroups: [.outerback, .shoulders, .traps], category: .back),
-        Exercise(id: "hyperextensions", name: "Hyperextensions", muscleGroups: [.lowerback, .glutes, .hamstrings], category: .back),
-        Exercise(id: "good-mornings", name: "Good Mornings", muscleGroups: [.lowerback, .hamstrings, .glutes], category: .back),
-        
+        Exercise(id: "deadlift", name: "Deadlift", muscleGroups: [.lowerback, .glutes, .hamstrings, .traps, .lats], category: .back, equipment: .barbell),
+        Exercise(id: "barbell-row", name: "Barbell Row", muscleGroups: [.lats, .outerback, .biceps, .traps], category: .back, equipment: .barbell),
+        Exercise(id: "pull-ups", name: "Pull-Ups", muscleGroups: [.lats, .biceps, .outerback, .forearms], category: .back, equipment: .pullUpBar),
+        Exercise(id: "chin-ups", name: "Chin-Ups", muscleGroups: [.lats, .biceps, .outerback], category: .back, equipment: .pullUpBar),
+        Exercise(id: "lat-pulldown", name: "Lat Pulldown", muscleGroups: [.lats, .biceps, .outerback], category: .back, equipment: .cable),
+        Exercise(id: "seated-cable-row", name: "Seated Cable Row", muscleGroups: [.lats, .outerback, .biceps, .traps], category: .back, equipment: .cable),
+        Exercise(id: "single-arm-row", name: "Single Arm Dumbbell Row", muscleGroups: [.lats, .outerback, .biceps], category: .back, equipment: .dumbbell),
+        Exercise(id: "t-bar-row", name: "T-Bar Row", muscleGroups: [.lats, .outerback, .traps, .biceps], category: .back, equipment: .barbell),
+        Exercise(id: "face-pulls", name: "Face Pulls", muscleGroups: [.outerback, .shoulders, .traps], category: .back, equipment: .cable),
+        Exercise(id: "hyperextensions", name: "Hyperextensions", muscleGroups: [.lowerback, .glutes, .hamstrings], category: .back, equipment: .bodyweight),
+        Exercise(id: "good-mornings", name: "Good Mornings", muscleGroups: [.lowerback, .hamstrings, .glutes], category: .back, equipment: .barbell),
+
         // BACK EXERCISES (Additions)
-        Exercise(id: "assisted-pull-ups", name: "Assisted Pull-Ups", muscleGroups: [.lats, .biceps, .outerback, .forearms], category: .back),
-        Exercise(id: "inverted-row", name: "Inverted Row", muscleGroups: [.outerback, .lats, .biceps, .forearms], category: .back),
+        Exercise(id: "assisted-pull-ups", name: "Assisted Pull-Ups", muscleGroups: [.lats, .biceps, .outerback, .forearms], category: .back, equipment: .machine),
+        Exercise(id: "inverted-row", name: "Inverted Row", muscleGroups: [.outerback, .lats, .biceps, .forearms], category: .back, equipment: .bodyweight),
 
-        Exercise(id: "chest-supported-row", name: "Chest-Supported Row", muscleGroups: [.outerback, .lats, .traps, .biceps], category: .back),
-        Exercise(id: "machine-row", name: "Machine Row", muscleGroups: [.lats, .outerback, .biceps, .traps], category: .back),
+        Exercise(id: "chest-supported-row", name: "Chest-Supported Row", muscleGroups: [.outerback, .lats, .traps, .biceps], category: .back, equipment: .dumbbell),
+        Exercise(id: "machine-row", name: "Machine Row", muscleGroups: [.lats, .outerback, .biceps, .traps], category: .back, equipment: .machine),
 
-        Exercise(id: "pendlay-row", name: "Pendlay Row", muscleGroups: [.lats, .outerback, .traps, .lowerback, .biceps], category: .back),
+        Exercise(id: "pendlay-row", name: "Pendlay Row", muscleGroups: [.lats, .outerback, .traps, .lowerback, .biceps], category: .back, equipment: .barbell),
 
-        Exercise(id: "straight-arm-pulldown", name: "Straight-Arm Pulldown", muscleGroups: [.lats, .outerback], category: .back),
-        Exercise(id: "cable-pullover", name: "Cable Pullover", muscleGroups: [.lats, .outerback], category: .back),
+        Exercise(id: "straight-arm-pulldown", name: "Straight-Arm Pulldown", muscleGroups: [.lats, .outerback], category: .back, equipment: .cable),
+        Exercise(id: "cable-pullover", name: "Cable Pullover", muscleGroups: [.lats, .outerback], category: .back, equipment: .cable),
 
-        Exercise(id: "rack-pull", name: "Rack Pull", muscleGroups: [.lowerback, .traps, .glutes, .hamstrings], category: .back),
+        Exercise(id: "rack-pull", name: "Rack Pull", muscleGroups: [.lowerback, .traps, .glutes, .hamstrings], category: .back, equipment: .barbell),
 
 
         // SHOULDER EXERCISES
-        Exercise(id: "overhead-press", name: "Overhead Press", muscleGroups: [.shoulders, .triceps, .traps], category: .shoulders),
-        Exercise(id: "military-press", name: "Military Press", muscleGroups: [.shoulders, .triceps, .traps], category: .shoulders),
-        Exercise(id: "arnold-press", name: "Arnold Press", muscleGroups: [.shoulders, .triceps], category: .shoulders),
-        Exercise(id: "lateral-raises", name: "Lateral Raises", muscleGroups: [.shoulders], category: .shoulders),
-        Exercise(id: "front-raises", name: "Front Raises", muscleGroups: [.shoulders, .chest], category: .shoulders),
-        Exercise(id: "rear-delt-flyes", name: "Rear Delt Flyes", muscleGroups: [.shoulders, .outerback], category: .shoulders),
-        Exercise(id: "upright-rows", name: "Upright Rows", muscleGroups: [.shoulders, .traps], category: .shoulders),
-        Exercise(id: "shrugs", name: "Shrugs", muscleGroups: [.traps, .shoulders], category: .shoulders),
-        Exercise(id: "dumbbell-shoulder-press", name: "Dumbbell Shoulder Press", muscleGroups: [.shoulders, .triceps], category: .shoulders),
+        Exercise(id: "overhead-press", name: "Overhead Press", muscleGroups: [.shoulders, .triceps, .traps], category: .shoulders, equipment: .barbell),
+        Exercise(id: "military-press", name: "Military Press", muscleGroups: [.shoulders, .triceps, .traps], category: .shoulders, equipment: .barbell),
+        Exercise(id: "arnold-press", name: "Arnold Press", muscleGroups: [.shoulders, .triceps], category: .shoulders, equipment: .dumbbell),
+        Exercise(id: "lateral-raises", name: "Lateral Raises", muscleGroups: [.shoulders], category: .shoulders, equipment: .dumbbell),
+        Exercise(id: "front-raises", name: "Front Raises", muscleGroups: [.shoulders, .chest], category: .shoulders, equipment: .dumbbell),
+        Exercise(id: "rear-delt-flyes", name: "Rear Delt Flyes", muscleGroups: [.shoulders, .outerback], category: .shoulders, equipment: .dumbbell),
+        Exercise(id: "upright-rows", name: "Upright Rows", muscleGroups: [.shoulders, .traps], category: .shoulders, equipment: .barbell),
+        Exercise(id: "shrugs", name: "Shrugs", muscleGroups: [.traps, .shoulders], category: .shoulders, equipment: .dumbbell),
+        Exercise(id: "dumbbell-shoulder-press", name: "Dumbbell Shoulder Press", muscleGroups: [.shoulders, .triceps], category: .shoulders, equipment: .dumbbell),
 
         // SHOULDER EXERCISES (Additions)
-        Exercise(id: "seated-dumbbell-shoulder-press", name: "Seated Dumbbell Shoulder Press", muscleGroups: [.shoulders, .triceps], category: .shoulders),
-        Exercise(id: "machine-shoulder-press", name: "Machine Shoulder Press", muscleGroups: [.shoulders, .triceps], category: .shoulders),
+        Exercise(id: "seated-dumbbell-shoulder-press", name: "Seated Dumbbell Shoulder Press", muscleGroups: [.shoulders, .triceps], category: .shoulders, equipment: .dumbbell),
+        Exercise(id: "machine-shoulder-press", name: "Machine Shoulder Press", muscleGroups: [.shoulders, .triceps], category: .shoulders, equipment: .machine),
 
-        Exercise(id: "cable-lateral-raise", name: "Cable Lateral Raise", muscleGroups: [.shoulders], category: .shoulders),
-        Exercise(id: "cable-front-raise", name: "Cable Front Raise", muscleGroups: [.shoulders, .chest], category: .shoulders),
+        Exercise(id: "cable-lateral-raise", name: "Cable Lateral Raise", muscleGroups: [.shoulders], category: .shoulders, equipment: .cable),
+        Exercise(id: "cable-front-raise", name: "Cable Front Raise", muscleGroups: [.shoulders, .chest], category: .shoulders, equipment: .cable),
 
-        Exercise(id: "reverse-pec-deck", name: "Reverse Pec Deck", muscleGroups: [.shoulders, .outerback], category: .shoulders),
-        Exercise(id: "y-raise", name: "Y-Raise", muscleGroups: [.shoulders, .outerback], category: .shoulders),
+        Exercise(id: "reverse-pec-deck", name: "Reverse Pec Deck", muscleGroups: [.shoulders, .outerback], category: .shoulders, equipment: .machine),
+        Exercise(id: "y-raise", name: "Y-Raise", muscleGroups: [.shoulders, .outerback], category: .shoulders, equipment: .dumbbell),
 
-        Exercise(id: "cuban-press", name: "Cuban Press", muscleGroups: [.shoulders, .traps], category: .shoulders),
+        Exercise(id: "cuban-press", name: "Cuban Press", muscleGroups: [.shoulders, .traps], category: .shoulders, equipment: .dumbbell),
 
         // ARM EXERCISES - BICEPS
-        Exercise(id: "barbell-curl", name: "Barbell Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "dumbbell-curl", name: "Dumbbell Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "hammer-curl", name: "Hammer Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "preacher-curl", name: "Preacher Curl", muscleGroups: [.biceps], category: .arms),
-        Exercise(id: "concentration-curl", name: "Concentration Curl", muscleGroups: [.biceps], category: .arms),
-        Exercise(id: "cable-curl", name: "Cable Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "incline-dumbbell-curl", name: "Incline Dumbbell Curl", muscleGroups: [.biceps], category: .arms),
-        
+        Exercise(id: "barbell-curl", name: "Barbell Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .barbell),
+        Exercise(id: "dumbbell-curl", name: "Dumbbell Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .dumbbell),
+        Exercise(id: "hammer-curl", name: "Hammer Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .dumbbell),
+        Exercise(id: "preacher-curl", name: "Preacher Curl", muscleGroups: [.biceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "concentration-curl", name: "Concentration Curl", muscleGroups: [.biceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "cable-curl", name: "Cable Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .cable),
+        Exercise(id: "incline-dumbbell-curl", name: "Incline Dumbbell Curl", muscleGroups: [.biceps], category: .arms, equipment: .dumbbell),
+
         // ARM EXERCISES - BICEPS (Additions)
-        Exercise(id: "ez-bar-curl", name: "EZ-Bar Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "reverse-curl", name: "Reverse Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "zottman-curl", name: "Zottman Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "spider-curl", name: "Spider Curl", muscleGroups: [.biceps], category: .arms),
-        Exercise(id: "drag-curl", name: "Drag Curl", muscleGroups: [.biceps], category: .arms),
-        Exercise(id: "cross-body-hammer-curl", name: "Cross-Body Hammer Curl", muscleGroups: [.biceps, .forearms], category: .arms),
-        Exercise(id: "machine-bicep-curl", name: "Machine Bicep Curl", muscleGroups: [.biceps, .forearms], category: .arms),
+        Exercise(id: "ez-bar-curl", name: "EZ-Bar Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .ezBar),
+        Exercise(id: "reverse-curl", name: "Reverse Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .barbell),
+        Exercise(id: "zottman-curl", name: "Zottman Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .dumbbell),
+        Exercise(id: "spider-curl", name: "Spider Curl", muscleGroups: [.biceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "drag-curl", name: "Drag Curl", muscleGroups: [.biceps], category: .arms, equipment: .barbell),
+        Exercise(id: "cross-body-hammer-curl", name: "Cross-Body Hammer Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .dumbbell),
+        Exercise(id: "machine-bicep-curl", name: "Machine Bicep Curl", muscleGroups: [.biceps, .forearms], category: .arms, equipment: .machine),
 
         // ARM EXERCISES - FOREARMS/GRIP (Additions)
-        Exercise(id: "dead-hang", name: "Dead Hang", muscleGroups: [.forearms, .shoulders], category: .arms),
-        Exercise(id: "plate-pinch-hold", name: "Plate Pinch Hold", muscleGroups: [.forearms, .wrists], category: .arms),
-        Exercise(id: "wrist-roller", name: "Wrist Roller", muscleGroups: [.forearms, .wrists], category: .arms),
-        Exercise(id: "behind-the-back-wrist-curl", name: "Behind-the-Back Wrist Curl", muscleGroups: [.forearms, .wrists], category: .arms),
+        Exercise(id: "dead-hang", name: "Dead Hang", muscleGroups: [.forearms, .shoulders], category: .arms, equipment: .pullUpBar),
+        Exercise(id: "plate-pinch-hold", name: "Plate Pinch Hold", muscleGroups: [.forearms, .wrists], category: .arms, equipment: .plate),
+        Exercise(id: "wrist-roller", name: "Wrist Roller", muscleGroups: [.forearms, .wrists], category: .arms, equipment: .other),
+        Exercise(id: "behind-the-back-wrist-curl", name: "Behind-the-Back Wrist Curl", muscleGroups: [.forearms, .wrists], category: .arms, equipment: .barbell),
 
 
         // ARM EXERCISES - TRICEPS
-        Exercise(id: "tricep-pushdown", name: "Tricep Pushdown", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "skull-crushers", name: "Skull Crushers", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "overhead-tricep-extension", name: "Overhead Tricep Extension", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "tricep-dips", name: "Tricep Dips", muscleGroups: [.triceps, .chest, .shoulders], category: .arms),
-        Exercise(id: "close-grip-bench", name: "Close Grip Bench Press", muscleGroups: [.triceps, .chest], category: .arms),
-        Exercise(id: "tricep-kickbacks", name: "Tricep Kickbacks", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "diamond-pushups", name: "Diamond Push-Ups", muscleGroups: [.triceps, .chest], category: .arms),
-        
+        Exercise(id: "tricep-pushdown", name: "Tricep Pushdown", muscleGroups: [.triceps], category: .arms, equipment: .cable),
+        Exercise(id: "skull-crushers", name: "Skull Crushers", muscleGroups: [.triceps], category: .arms, equipment: .barbell),
+        Exercise(id: "overhead-tricep-extension", name: "Overhead Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "tricep-dips", name: "Tricep Dips", muscleGroups: [.triceps, .chest, .shoulders], category: .arms, equipment: .bodyweight),
+        Exercise(id: "close-grip-bench", name: "Close Grip Bench Press", muscleGroups: [.triceps, .chest], category: .arms, equipment: .barbell),
+        Exercise(id: "tricep-kickbacks", name: "Tricep Kickbacks", muscleGroups: [.triceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "diamond-pushups", name: "Diamond Push-Ups", muscleGroups: [.triceps, .chest], category: .arms, equipment: .bodyweight),
+
         // ARM EXERCISES - TRICEPS (Additions)
-        Exercise(id: "rope-tricep-pushdown", name: "Rope Tricep Pushdown", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "v-bar-tricep-pushdown", name: "V-Bar Tricep Pushdown", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "single-arm-cable-tricep-pushdown", name: "Single-Arm Cable Tricep Pushdown", muscleGroups: [.triceps], category: .arms),
+        Exercise(id: "rope-tricep-pushdown", name: "Rope Tricep Pushdown", muscleGroups: [.triceps], category: .arms, equipment: .cable),
+        Exercise(id: "v-bar-tricep-pushdown", name: "V-Bar Tricep Pushdown", muscleGroups: [.triceps], category: .arms, equipment: .cable),
+        Exercise(id: "single-arm-cable-tricep-pushdown", name: "Single-Arm Cable Tricep Pushdown", muscleGroups: [.triceps], category: .arms, equipment: .cable),
 
-        Exercise(id: "overhead-rope-tricep-extension", name: "Overhead Rope Tricep Extension", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "overhead-cable-tricep-extension", name: "Overhead Cable Tricep Extension", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "single-arm-overhead-cable-tricep-extension", name: "Single-Arm Overhead Cable Tricep Extension", muscleGroups: [.triceps], category: .arms),
+        Exercise(id: "overhead-rope-tricep-extension", name: "Overhead Rope Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .cable),
+        Exercise(id: "overhead-cable-tricep-extension", name: "Overhead Cable Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .cable),
+        Exercise(id: "single-arm-overhead-cable-tricep-extension", name: "Single-Arm Overhead Cable Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .cable),
 
-        Exercise(id: "seated-overhead-dumbbell-tricep-extension", name: "Seated Overhead Dumbbell Tricep Extension", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "single-arm-overhead-dumbbell-tricep-extension", name: "Single-Arm Overhead Dumbbell Tricep Extension", muscleGroups: [.triceps], category: .arms),
+        Exercise(id: "seated-overhead-dumbbell-tricep-extension", name: "Seated Overhead Dumbbell Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "single-arm-overhead-dumbbell-tricep-extension", name: "Single-Arm Overhead Dumbbell Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .dumbbell),
 
-        Exercise(id: "lying-dumbbell-tricep-extension", name: "Lying Dumbbell Tricep Extension", muscleGroups: [.triceps], category: .arms),
-        Exercise(id: "ez-bar-skull-crushers", name: "EZ-Bar Skull Crushers", muscleGroups: [.triceps], category: .arms),
+        Exercise(id: "lying-dumbbell-tricep-extension", name: "Lying Dumbbell Tricep Extension", muscleGroups: [.triceps], category: .arms, equipment: .dumbbell),
+        Exercise(id: "ez-bar-skull-crushers", name: "EZ-Bar Skull Crushers", muscleGroups: [.triceps], category: .arms, equipment: .ezBar),
 
-        Exercise(id: "jm-press", name: "JM Press", muscleGroups: [.triceps, .chest], category: .arms),
-        Exercise(id: "tate-press", name: "Tate Press", muscleGroups: [.triceps, .chest], category: .arms),
+        Exercise(id: "jm-press", name: "JM Press", muscleGroups: [.triceps, .chest], category: .arms, equipment: .barbell),
+        Exercise(id: "tate-press", name: "Tate Press", muscleGroups: [.triceps, .chest], category: .arms, equipment: .dumbbell),
 
-        Exercise(id: "bench-dips", name: "Bench Dips", muscleGroups: [.triceps, .chest, .shoulders], category: .arms),
-        Exercise(id: "close-grip-pushups", name: "Close-Grip Push-Ups", muscleGroups: [.triceps, .chest, .shoulders], category: .arms),
+        Exercise(id: "bench-dips", name: "Bench Dips", muscleGroups: [.triceps, .chest, .shoulders], category: .arms, equipment: .bench),
+        Exercise(id: "close-grip-pushups", name: "Close-Grip Push-Ups", muscleGroups: [.triceps, .chest, .shoulders], category: .arms, equipment: .bodyweight),
 
 
         // ARM EXERCISES - FOREARMS
-        Exercise(id: "wrist-curls", name: "Wrist Curls", muscleGroups: [.forearms, .wrists], category: .arms),
-        Exercise(id: "reverse-wrist-curls", name: "Reverse Wrist Curls", muscleGroups: [.forearms, .wrists], category: .arms),
-        Exercise(id: "farmers-walk", name: "Farmer's Walk", muscleGroups: [.forearms, .traps, .abs], category: .arms),
+        Exercise(id: "wrist-curls", name: "Wrist Curls", muscleGroups: [.forearms, .wrists], category: .arms, equipment: .dumbbell),
+        Exercise(id: "reverse-wrist-curls", name: "Reverse Wrist Curls", muscleGroups: [.forearms, .wrists], category: .arms, equipment: .dumbbell),
+        Exercise(id: "farmers-walk", name: "Farmer's Walk", muscleGroups: [.forearms, .traps, .abs], category: .arms, equipment: .dumbbell),
         
 
         // LEG EXERCISES
-        Exercise(id: "squat", name: "Squat", muscleGroups: [.thighs, .glutes, .hamstrings, .lowerback], category: .legs),
-        Exercise(id: "front-squat", name: "Front Squat", muscleGroups: [.thighs, .glutes, .abs], category: .legs),
-        Exercise(id: "leg-press", name: "Leg Press", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs),
-        Exercise(id: "lunges", name: "Lunges", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs),
-        Exercise(id: "leg-extension", name: "Leg Extension", muscleGroups: [.thighs], category: .legs),
-        Exercise(id: "leg-curl", name: "Leg Curl", muscleGroups: [.hamstrings], category: .legs),
-        Exercise(id: "romanian-deadlift", name: "Romanian Deadlift", muscleGroups: [.hamstrings, .glutes, .lowerback], category: .legs),
-        Exercise(id: "hip-thrust", name: "Hip Thrust", muscleGroups: [.glutes, .hamstrings], category: .legs),
-        Exercise(id: "calf-raises", name: "Calf Raises", muscleGroups: [.calves], category: .legs),
-        Exercise(id: "seated-calf-raises", name: "Seated Calf Raises", muscleGroups: [.calves], category: .legs),
-        Exercise(id: "bulgarian-split-squat", name: "Bulgarian Split Squat", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs),
-        Exercise(id: "goblet-squat", name: "Goblet Squat", muscleGroups: [.thighs, .glutes], category: .legs),
-        Exercise(id: "hack-squat", name: "Hack Squat", muscleGroups: [.thighs, .glutes], category: .legs),
-        Exercise(id: "hip-adduction", name: "Hip Adduction", muscleGroups: [.innerthigh], category: .legs),
-        Exercise(id: "hip-abduction", name: "Hip Abduction", muscleGroups: [.outerthigh, .glutes], category: .legs),
-        Exercise(id: "step-ups", name: "Step-Ups", muscleGroups: [.thighs, .glutes], category: .legs),
-        
+        Exercise(id: "squat", name: "Squat", muscleGroups: [.thighs, .glutes, .hamstrings, .lowerback], category: .legs, equipment: .barbell),
+        Exercise(id: "front-squat", name: "Front Squat", muscleGroups: [.thighs, .glutes, .abs], category: .legs, equipment: .barbell),
+        Exercise(id: "leg-press", name: "Leg Press", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs, equipment: .machine),
+        Exercise(id: "lunges", name: "Lunges", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs, equipment: .bodyweight),
+        Exercise(id: "leg-extension", name: "Leg Extension", muscleGroups: [.thighs], category: .legs, equipment: .machine),
+        Exercise(id: "leg-curl", name: "Leg Curl", muscleGroups: [.hamstrings], category: .legs, equipment: .machine),
+        Exercise(id: "romanian-deadlift", name: "Romanian Deadlift", muscleGroups: [.hamstrings, .glutes, .lowerback], category: .legs, equipment: .barbell),
+        Exercise(id: "hip-thrust", name: "Hip Thrust", muscleGroups: [.glutes, .hamstrings], category: .legs, equipment: .barbell),
+        Exercise(id: "calf-raises", name: "Calf Raises", muscleGroups: [.calves], category: .legs, equipment: .machine),
+        Exercise(id: "seated-calf-raises", name: "Seated Calf Raises", muscleGroups: [.calves], category: .legs, equipment: .machine),
+        Exercise(id: "bulgarian-split-squat", name: "Bulgarian Split Squat", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs, equipment: .dumbbell),
+        Exercise(id: "goblet-squat", name: "Goblet Squat", muscleGroups: [.thighs, .glutes], category: .legs, equipment: .dumbbell),
+        Exercise(id: "hack-squat", name: "Hack Squat", muscleGroups: [.thighs, .glutes], category: .legs, equipment: .machine),
+        Exercise(id: "hip-adduction", name: "Hip Adduction", muscleGroups: [.innerthigh], category: .legs, equipment: .machine),
+        Exercise(id: "hip-abduction", name: "Hip Abduction", muscleGroups: [.outerthigh, .glutes], category: .legs, equipment: .machine),
+        Exercise(id: "step-ups", name: "Step-Ups", muscleGroups: [.thighs, .glutes], category: .legs, equipment: .dumbbell),
+
         // LEG EXERCISES (Additions)
-        Exercise(id: "walking-lunges", name: "Walking Lunges", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs),
-        Exercise(id: "reverse-lunges", name: "Reverse Lunges", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs),
+        Exercise(id: "walking-lunges", name: "Walking Lunges", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs, equipment: .dumbbell),
+        Exercise(id: "reverse-lunges", name: "Reverse Lunges", muscleGroups: [.thighs, .glutes, .hamstrings], category: .legs, equipment: .dumbbell),
 
-        Exercise(id: "glute-bridge", name: "Glute Bridge", muscleGroups: [.glutes, .hamstrings], category: .legs),
-        Exercise(id: "single-leg-romanian-deadlift", name: "Single-Leg Romanian Deadlift", muscleGroups: [.hamstrings, .glutes, .lowerback], category: .legs),
+        Exercise(id: "glute-bridge", name: "Glute Bridge", muscleGroups: [.glutes, .hamstrings], category: .legs, equipment: .bodyweight),
+        Exercise(id: "single-leg-romanian-deadlift", name: "Single-Leg Romanian Deadlift", muscleGroups: [.hamstrings, .glutes, .lowerback], category: .legs, equipment: .dumbbell),
 
-        Exercise(id: "nordic-hamstring-curl", name: "Nordic Hamstring Curl", muscleGroups: [.hamstrings, .glutes], category: .legs),
-        Exercise(id: "glute-ham-raise", name: "Glute-Ham Raise", muscleGroups: [.hamstrings, .glutes], category: .legs),
+        Exercise(id: "nordic-hamstring-curl", name: "Nordic Hamstring Curl", muscleGroups: [.hamstrings, .glutes], category: .legs, equipment: .bodyweight),
+        Exercise(id: "glute-ham-raise", name: "Glute-Ham Raise", muscleGroups: [.hamstrings, .glutes], category: .legs, equipment: .machine),
 
-        Exercise(id: "calf-press-leg-press", name: "Calf Press (Leg Press Machine)", muscleGroups: [.calves], category: .legs),
-        Exercise(id: "donkey-calf-raise", name: "Donkey Calf Raise", muscleGroups: [.calves], category: .legs),
+        Exercise(id: "calf-press-leg-press", name: "Calf Press (Leg Press Machine)", muscleGroups: [.calves], category: .legs, equipment: .machine),
+        Exercise(id: "donkey-calf-raise", name: "Donkey Calf Raise", muscleGroups: [.calves], category: .legs, equipment: .machine),
 
 
         // CORE EXERCISES
-        Exercise(id: "plank", name: "Plank", muscleGroups: [.abs, .obliques, .lowerback], category: .core),
-        Exercise(id: "crunches", name: "Crunches", muscleGroups: [.abs], category: .core),
-        Exercise(id: "leg-raises", name: "Leg Raises", muscleGroups: [.abs, .obliques], category: .core),
-        Exercise(id: "russian-twist", name: "Russian Twist", muscleGroups: [.obliques, .abs], category: .core),
-        Exercise(id: "bicycle-crunches", name: "Bicycle Crunches", muscleGroups: [.abs, .obliques], category: .core),
-        Exercise(id: "hanging-leg-raise", name: "Hanging Leg Raise", muscleGroups: [.abs, .obliques], category: .core),
-        Exercise(id: "ab-wheel-rollout", name: "Ab Wheel Rollout", muscleGroups: [.abs, .obliques, .lowerback], category: .core),
-        Exercise(id: "cable-woodchop", name: "Cable Woodchop", muscleGroups: [.obliques, .abs], category: .core),
-        Exercise(id: "mountain-climbers", name: "Mountain Climbers", muscleGroups: [.abs, .obliques, .shoulders], category: .core),
-        Exercise(id: "dead-bug", name: "Dead Bug", muscleGroups: [.abs, .obliques], category: .core),
-        Exercise(id: "bird-dog", name: "Bird Dog", muscleGroups: [.abs, .lowerback, .glutes], category: .core),
-        Exercise(id: "side-plank", name: "Side Plank", muscleGroups: [.obliques, .abs], category: .core),
-        
+        Exercise(id: "plank", name: "Plank", muscleGroups: [.abs, .obliques, .lowerback], category: .core, equipment: .bodyweight),
+        Exercise(id: "crunches", name: "Crunches", muscleGroups: [.abs], category: .core, equipment: .bodyweight),
+        Exercise(id: "leg-raises", name: "Leg Raises", muscleGroups: [.abs, .obliques], category: .core, equipment: .bodyweight),
+        Exercise(id: "russian-twist", name: "Russian Twist", muscleGroups: [.obliques, .abs], category: .core, equipment: .bodyweight),
+        Exercise(id: "bicycle-crunches", name: "Bicycle Crunches", muscleGroups: [.abs, .obliques], category: .core, equipment: .bodyweight),
+        Exercise(id: "hanging-leg-raise", name: "Hanging Leg Raise", muscleGroups: [.abs, .obliques], category: .core, equipment: .pullUpBar),
+        Exercise(id: "ab-wheel-rollout", name: "Ab Wheel Rollout", muscleGroups: [.abs, .obliques, .lowerback], category: .core, equipment: .abWheel),
+        Exercise(id: "cable-woodchop", name: "Cable Woodchop", muscleGroups: [.obliques, .abs], category: .core, equipment: .cable),
+        Exercise(id: "mountain-climbers", name: "Mountain Climbers", muscleGroups: [.abs, .obliques, .shoulders], category: .core, equipment: .bodyweight),
+        Exercise(id: "dead-bug", name: "Dead Bug", muscleGroups: [.abs, .obliques], category: .core, equipment: .bodyweight),
+        Exercise(id: "bird-dog", name: "Bird Dog", muscleGroups: [.abs, .lowerback, .glutes], category: .core, equipment: .bodyweight),
+        Exercise(id: "side-plank", name: "Side Plank", muscleGroups: [.obliques, .abs], category: .core, equipment: .bodyweight),
+
         // CORE EXERCISES (Additions)
-        Exercise(id: "cable-crunch", name: "Cable Crunch", muscleGroups: [.abs], category: .core),
-        Exercise(id: "reverse-crunch", name: "Reverse Crunch", muscleGroups: [.abs], category: .core),
-        Exercise(id: "hollow-hold", name: "Hollow Hold", muscleGroups: [.abs], category: .core),
+        Exercise(id: "cable-crunch", name: "Cable Crunch", muscleGroups: [.abs], category: .core, equipment: .cable),
+        Exercise(id: "reverse-crunch", name: "Reverse Crunch", muscleGroups: [.abs], category: .core, equipment: .bodyweight),
+        Exercise(id: "hollow-hold", name: "Hollow Hold", muscleGroups: [.abs], category: .core, equipment: .bodyweight),
 
-        Exercise(id: "pallof-press", name: "Pallof Press", muscleGroups: [.abs, .obliques], category: .core),
-        Exercise(id: "suitcase-carry", name: "Suitcase Carry", muscleGroups: [.abs, .obliques, .forearms], category: .core),
+        Exercise(id: "pallof-press", name: "Pallof Press", muscleGroups: [.abs, .obliques], category: .core, equipment: .cable),
+        Exercise(id: "suitcase-carry", name: "Suitcase Carry", muscleGroups: [.abs, .obliques, .forearms], category: .core, equipment: .dumbbell),
 
-        Exercise(id: "hanging-knee-raise", name: "Hanging Knee Raise", muscleGroups: [.abs, .obliques], category: .core),
+        Exercise(id: "hanging-knee-raise", name: "Hanging Knee Raise", muscleGroups: [.abs, .obliques], category: .core, equipment: .pullUpBar),
 
 
         // FULL BODY EXERCISES
-        Exercise(id: "clean-and-press", name: "Clean and Press", muscleGroups: [.shoulders, .traps, .thighs, .glutes, .lowerback], category: .fullBody),
-        Exercise(id: "clean", name: "Power Clean", muscleGroups: [.traps, .thighs, .glutes, .lowerback, .shoulders], category: .fullBody),
-        Exercise(id: "snatch", name: "Snatch", muscleGroups: [.shoulders, .traps, .thighs, .glutes, .lowerback], category: .fullBody),
-        Exercise(id: "thrusters", name: "Thrusters", muscleGroups: [.thighs, .glutes, .shoulders, .triceps], category: .fullBody),
-        Exercise(id: "burpees", name: "Burpees", muscleGroups: [.chest, .thighs, .abs, .shoulders], category: .fullBody),
-        Exercise(id: "kettlebell-swing", name: "Kettlebell Swing", muscleGroups: [.glutes, .hamstrings, .lowerback, .shoulders], category: .fullBody),
-        Exercise(id: "turkish-getup", name: "Turkish Get-Up", muscleGroups: [.shoulders, .abs, .glutes, .thighs], category: .fullBody),
-        Exercise(id: "man-makers", name: "Man Makers", muscleGroups: [.chest, .shoulders, .thighs, .abs, .triceps], category: .fullBody),
+        Exercise(id: "clean-and-press", name: "Clean and Press", muscleGroups: [.shoulders, .traps, .thighs, .glutes, .lowerback], category: .fullBody, equipment: .barbell),
+        Exercise(id: "clean", name: "Power Clean", muscleGroups: [.traps, .thighs, .glutes, .lowerback, .shoulders], category: .fullBody, equipment: .barbell),
+        Exercise(id: "snatch", name: "Snatch", muscleGroups: [.shoulders, .traps, .thighs, .glutes, .lowerback], category: .fullBody, equipment: .barbell),
+        Exercise(id: "thrusters", name: "Thrusters", muscleGroups: [.thighs, .glutes, .shoulders, .triceps], category: .fullBody, equipment: .barbell),
+        Exercise(id: "burpees", name: "Burpees", muscleGroups: [.chest, .thighs, .abs, .shoulders], category: .fullBody, equipment: .bodyweight),
+        Exercise(id: "kettlebell-swing", name: "Kettlebell Swing", muscleGroups: [.glutes, .hamstrings, .lowerback, .shoulders], category: .fullBody, equipment: .kettlebell),
+        Exercise(id: "turkish-getup", name: "Turkish Get-Up", muscleGroups: [.shoulders, .abs, .glutes, .thighs], category: .fullBody, equipment: .kettlebell),
+        Exercise(id: "man-makers", name: "Man Makers", muscleGroups: [.chest, .shoulders, .thighs, .abs, .triceps], category: .fullBody, equipment: .dumbbell),
 
         // CARDIO
-        Exercise(id: "running", name: "Running", muscleGroups: [.heart, .thighs, .calves, .hamstrings], category: .cardio),
-        Exercise(id: "cycling", name: "Cycling", muscleGroups: [.heart, .thighs, .calves], category: .cardio),
-        Exercise(id: "rowing", name: "Rowing", muscleGroups: [.heart, .lats, .biceps, .thighs], category: .cardio),
-        Exercise(id: "jump-rope", name: "Jump Rope", muscleGroups: [.heart, .calves, .shoulders], category: .cardio),
-        Exercise(id: "stair-climber", name: "Stair Climber", muscleGroups: [.heart, .thighs, .glutes, .calves], category: .cardio),
-        Exercise(id: "elliptical", name: "Elliptical", muscleGroups: [.heart, .thighs, .glutes], category: .cardio),
-        Exercise(id: "swimming", name: "Swimming", muscleGroups: [.heart, .lats, .shoulders, .chest], category: .cardio),
+        Exercise(id: "running", name: "Running", muscleGroups: [.heart, .thighs, .calves, .hamstrings], category: .cardio, equipment: .cardioMachine),
+        Exercise(id: "cycling", name: "Cycling", muscleGroups: [.heart, .thighs, .calves], category: .cardio, equipment: .cardioMachine),
+        Exercise(id: "rowing", name: "Rowing", muscleGroups: [.heart, .lats, .biceps, .thighs], category: .cardio, equipment: .cardioMachine),
+        Exercise(id: "jump-rope", name: "Jump Rope", muscleGroups: [.heart, .calves, .shoulders], category: .cardio, equipment: .other),
+        Exercise(id: "stair-climber", name: "Stair Climber", muscleGroups: [.heart, .thighs, .glutes, .calves], category: .cardio, equipment: .cardioMachine),
+        Exercise(id: "elliptical", name: "Elliptical", muscleGroups: [.heart, .thighs, .glutes], category: .cardio, equipment: .cardioMachine),
+        Exercise(id: "swimming", name: "Swimming", muscleGroups: [.heart, .lats, .shoulders, .chest], category: .cardio, equipment: .other),
 
         // NECK EXERCISES
-        Exercise(id: "neck-curl", name: "Neck Curl", muscleGroups: [.neck], category: .core),
-        Exercise(id: "neck-extension", name: "Neck Extension", muscleGroups: [.neck, .traps], category: .core),
-        Exercise(id: "neck-lateral-flexion", name: "Neck Lateral Flexion", muscleGroups: [.neck], category: .core),
+        Exercise(id: "neck-curl", name: "Neck Curl", muscleGroups: [.neck], category: .core, equipment: .plate),
+        Exercise(id: "neck-extension", name: "Neck Extension", muscleGroups: [.neck, .traps], category: .core, equipment: .plate),
+        Exercise(id: "neck-lateral-flexion", name: "Neck Lateral Flexion", muscleGroups: [.neck], category: .core, equipment: .plate),
     ]
 
     /// Get exercises that work a specific muscle group
