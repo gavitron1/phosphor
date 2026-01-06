@@ -214,8 +214,10 @@ struct BodyView: View {
                                         withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
                                             selectedMuscleForFrequency = muscleGroup
                                         }
-                                        let generator = UISelectionFeedbackGenerator()
-                                        generator.selectionChanged()
+                                        if muscleGroup != nil {
+                                            let generator = UISelectionFeedbackGenerator()
+                                            generator.selectionChanged()
+                                        }
                                     }
                                 )
                                 .offset(y: -32)

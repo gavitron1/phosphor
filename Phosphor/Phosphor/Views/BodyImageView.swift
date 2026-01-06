@@ -157,7 +157,7 @@ struct TappableBodyView: View {
     // Frequency edit mode parameters (optional)
     var isFrequencyEditMode: Bool = false
     var selectedMuscleForFrequency: MuscleGroup? = nil
-    var onMuscleSelectedForFrequency: ((MuscleGroup) -> Void)? = nil
+    var onMuscleSelectedForFrequency: ((MuscleGroup?) -> Void)? = nil  // Pass nil to deselect
 
     @Environment(\.colorScheme) private var colorScheme
     @State private var viewSize: CGSize = .zero
@@ -188,12 +188,12 @@ struct TappableBodyView: View {
 
     // Gray color for disabled muscles (full opacity)
     private var disabledColor: Color {
-        darkMode ? Self.coolGray100 : Self.coolGray10
+        darkMode ? Self.coolGray90 : Self.coolGray20
     }
 
     // Gray color for unselected muscles in frequency edit mode (full opacity)
     private var editModeUnselectedColor: Color {
-        darkMode ? Self.coolGray100 : Self.coolGray10
+        darkMode ? Self.coolGray90 : Self.coolGray20
     }
 
     // Selected muscle color in frequency edit mode
@@ -337,6 +337,11 @@ struct TappableBodyView: View {
                 }
                 return
             }
+        }
+
+        // If in edit mode and tapped outside all muscles, deselect
+        if isFrequencyEditMode {
+            onMuscleSelectedForFrequency?(nil)
         }
     }
 
