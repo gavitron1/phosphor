@@ -166,20 +166,19 @@ struct TappableBodyView: View {
     @State private var muscleImages: [MuscleGroup: UIImage] = [:]
 
 
-    // MARK: - Cool Gray Palette (white to black with cool tint)
-    // Slightly more blue for a cool appearance
-    private static let coolWhite = Color(red: 1.0, green: 1.0, blue: 1.0)
-    private static let coolGray10 = Color(red: 0.89, green: 0.90, blue: 0.91)
-    private static let coolGray20 = Color(red: 0.78, green: 0.80, blue: 0.82)
-    private static let coolGray30 = Color(red: 0.67, green: 0.69, blue: 0.73)
-    private static let coolGray40 = Color(red: 0.56, green: 0.59, blue: 0.64)
-    private static let coolGray50 = Color(red: 0.45, green: 0.48, blue: 0.55)
-    private static let coolGray60 = Color(red: 0.35, green: 0.38, blue: 0.45)
-    private static let coolGray70 = Color(red: 0.26, green: 0.28, blue: 0.36)
-    private static let coolGray80 = Color(red: 0.17, green: 0.19, blue: 0.27)
-    private static let coolGray90 = Color(red: 0.09, green: 0.10, blue: 0.18)
-    private static let coolGray100 = Color(red: 0.04, green: 0.05, blue: 0.09)
-    private static let coolBlack = Color(red: 0.0, green: 0.0, blue: 0.0)
+    // MARK: - Neutral Gray Palette (white to black)
+    private static let gray00 = Color(red: 1.0, green: 1.0, blue: 1.0)      // white
+    private static let gray10 = Color(red: 0.90, green: 0.90, blue: 0.90)
+    private static let gray20 = Color(red: 0.80, green: 0.80, blue: 0.80)
+    private static let gray30 = Color(red: 0.70, green: 0.70, blue: 0.70)
+    private static let gray40 = Color(red: 0.60, green: 0.60, blue: 0.60)
+    private static let gray50 = Color(red: 0.50, green: 0.50, blue: 0.50)
+    private static let gray60 = Color(red: 0.40, green: 0.40, blue: 0.40)
+    private static let gray70 = Color(red: 0.30, green: 0.30, blue: 0.30)
+    private static let gray80 = Color(red: 0.20, green: 0.20, blue: 0.20)
+    private static let gray90 = Color(red: 0.10, green: 0.10, blue: 0.10)
+    private static let gray100 = Color(red: 0.05, green: 0.05, blue: 0.05)
+    private static let grayBlack = Color(red: 0.0, green: 0.0, blue: 0.0)   // black
 
     // The base color muscles fade to (white in light mode, black in dark mode)
     private var baseColor: Color {
@@ -188,17 +187,17 @@ struct TappableBodyView: View {
 
     // Gray color for disabled muscles (full opacity)
     private var disabledColor: Color {
-        darkMode ? Self.coolGray90 : Self.coolGray20
+        darkMode ? Self.gray90 : Self.gray20
     }
 
     // Gray color for unselected muscles in frequency edit mode (full opacity)
     private var editModeUnselectedColor: Color {
-        darkMode ? Self.coolGray90 : Self.coolGray20
+        darkMode ? Self.gray90 : Self.gray20
     }
 
     // Selected muscle color in frequency edit mode
     private var editModeSelectedColor: Color {
-        Self.coolGray50
+        Self.gray50
     }
 
     // Gray color for muscles with no intensity in normal mode
