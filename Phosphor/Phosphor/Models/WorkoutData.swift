@@ -225,3 +225,25 @@ struct ExerciseRecord: Codable, Identifiable {
         self.date = date
     }
 }
+
+struct DailyRecommendations: Codable {
+    let date: Date  // The day these recommendations are for (start of day)
+    let exerciseIds: [String]  // The 6 recommended exercise IDs
+    var completedIds: Set<String>  // Exercises that were completed
+    var dismissedIds: Set<String>  // Exercises that were dismissed
+
+    init(date: Date, exerciseIds: [String]) {
+        self.date = date
+        self.exerciseIds = exerciseIds
+        self.completedIds = []
+        self.dismissedIds = []
+    }
+
+    var remainingExerciseIds: [String] {
+        exerciseIds.filter { !completedIds.contains($0) && !dismissedIds.contains($0) }
+    }
+
+    var remainingCount: Int {
+        remainingExerciseIds.count
+    }
+}

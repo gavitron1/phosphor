@@ -18,6 +18,13 @@ struct BodyView: View {
     @ObservedObject var notificationManager = NotificationManager.shared
     @Environment(\.colorScheme) private var colorScheme
 
+    // Gray palette
+    private var gray10: Color { Color(red: 0.90, green: 0.90, blue: 0.90) }
+
+    private var backgroundColor: Color {
+        colorScheme == .dark ? Color(.systemGroupedBackground) : gray10
+    }
+
     @State private var currentSide: BodySide = .front
     @State private var daysOffset: Double = 0 // -7 = 7 days ago, 0 = today, +7 = 7 days in future
     @State private var isDragging: Bool = false
@@ -28,9 +35,6 @@ struct BodyView: View {
     // Frequency edit mode state
     @State private var isEditingFrequency: Bool = false
     @State private var selectedMuscleForFrequency: MuscleGroup?
-
-    // Dismissed recommendations (reset daily)
-    @State private var dismissedExerciseIds: Set<String> = []
 
     // Dynamic capsule state
     @State private var feedbackText: String = ""
@@ -110,38 +114,6 @@ struct BodyView: View {
         return sorted.last
     }
 
-    /// Muscle groups that need attention (intensity below 20% or never activated)
-    private var muscleGroupsNeedingWork: [MuscleGroup] {
-        dataManager.muscleGroupData.values
-            .filter { $0.isEnabled }
-            .sorted { $0.intensity() < $1.intensity() }
-            .prefix(5)
-            .map { $0.muscleGroup }
-    }
-
-    /// Recommended exercises based on muscle groups that need work
-    private var recommendedExercises: [Exercise] {
-        let needsWork = muscleGroupsNeedingWork
-        var recommendations: [Exercise] = []
-        var usedExerciseIds = Set<String>()
-
-        // Get exercises for each muscle group needing work (excluding dismissed)
-        for muscleGroup in needsWork {
-            let exercises = ExerciseDatabase.exercises.filter { exercise in
-                exercise.muscleGroups.contains(muscleGroup) &&
-                !usedExerciseIds.contains(exercise.id) &&
-                !dismissedExerciseIds.contains(exercise.id)
-            }
-            if let exercise = exercises.first {
-                recommendations.append(exercise)
-                usedExerciseIds.insert(exercise.id)
-            }
-            if recommendations.count >= 5 { break }
-        }
-
-        return recommendations
-    }
-
     private var todayDateString: String {
         let formatter = DateFormatter()
         formatter.dateFormat = "EEEE, MMM d"
@@ -191,7 +163,7 @@ struct BodyView: View {
         GeometryReader { geometry in
             ZStack {
                 // Background
-                Color(.systemGroupedBackground)
+                backgroundColor
                     .ignoresSafeArea()
 
                 // Scrollable content
@@ -302,34 +274,52 @@ struct BodyView: View {
                                             .font(.subheadline)
                                             .foregroundColor(.secondary)
                                     }
+                                    .padding(.horizontal, 16)
 
-                                    if recommendedExercises.isEmpty {
-                                        Text("Great job! All muscle groups are active.")
+                                    let todaysExercises = dataManager.getTodaysRecommendedExercises()
+
+                                    if todaysExercises.isEmpty {
+                                        Text("No more recommended exercises today")
                                             .font(.body)
                                             .foregroundColor(.secondary)
-                                            .padding(.vertical, 20)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 40)
                                     } else {
                                         ScrollView(.horizontal, showsIndicators: false) {
                                             HStack(spacing: 12) {
-                                                ForEach(recommendedExercises) { exercise in
+                                                ForEach(todaysExercises) { exercise in
                                                     RecommendedExerciseCard(
                                                         exercise: exercise,
                                                         highlightColor: dataManager.settings.highlightColor.color,
                                                         onActivate: {
                                                             activateExerciseMuscles(exercise)
                                                             dataManager.recordExercise(exercise)
-                                                            dismissedExerciseIds.insert(exercise.id)
+                                                            dataManager.completeRecommendedExercise(exercise.id)
                                                         },
                                                         onDismiss: {
                                                             withAnimation {
-                                                                _ = dismissedExerciseIds.insert(exercise.id)
+                                                                dataManager.dismissRecommendedExercise(exercise.id)
                                                             }
                                                         }
                                                     )
+                                                    .frame(width: geometry.size.width - 56)
                                                 }
                                             }
-                                            .padding(.horizontal, 4)
+                                            .padding(.horizontal, 16)
+                                            .scrollTargetLayout()
                                         }
+                                        .scrollTargetBehavior(.viewAligned)
+
+                                        // Page indicator dots
+                                        HStack(spacing: 6) {
+                                            ForEach(0..<todaysExercises.count, id: \.self) { _ in
+                                                Circle()
+                                                    .fill(dataManager.settings.highlightColor.color)
+                                                    .frame(width: 6, height: 6)
+                                            }
+                                        }
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.top, 8)
                                     }
                                 }
 
@@ -369,8 +359,9 @@ struct BodyView: View {
                                             .fill(Color(.secondarySystemBackground))
                                     )
                                 }
+                                .padding(.horizontal, 16)
                             }
-                            .padding()
+                            .padding(.vertical, 16)
                         }
                     }
                 }
@@ -522,13 +513,14 @@ struct BodyView: View {
                 }
             }
         }
-        .gesture(
+        .simultaneousGesture(
             DragGesture(minimumDistance: 50)
                 .onEnded { gesture in
                     let horizontalDistance = gesture.translation.width
                     let verticalDistance = abs(gesture.translation.height)
 
-                    if abs(horizontalDistance) > verticalDistance {
+                    // Only trigger on primarily horizontal swipes
+                    if abs(horizontalDistance) > verticalDistance && abs(horizontalDistance) > 80 {
                         currentSide = currentSide == .front ? .back : .front
                         let generator = UIImpactFeedbackGenerator(style: .light)
                         generator.impactOccurred()
@@ -725,7 +717,6 @@ struct GlassCircleModifier: ViewModifier {
             .background(
                 Circle()
                     .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
             )
     }
 }
@@ -736,7 +727,6 @@ struct GlassCapsuleModifier: ViewModifier {
             .background(
                 Capsule()
                     .fill(.ultraThinMaterial)
-                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
             )
     }
 }
@@ -1236,11 +1226,10 @@ struct RecommendedExerciseCard: View {
     @State private var sets: Int = 3
     @State private var reps: Int = 10
 
-    // Gray colors matching the palette
     private var cardBackground: Color {
         colorScheme == .dark
-            ? Color(red: 0.10, green: 0.10, blue: 0.10)  // gray90
-            : Color(red: 0.80, green: 0.80, blue: 0.80)  // gray20
+            ? Color(red: 0.15, green: 0.15, blue: 0.15)
+            : .white
     }
 
     var body: some View {
@@ -1354,8 +1343,9 @@ struct RecommendedExerciseCard: View {
                 }
             }
         }
-        .padding(16)
-        .frame(width: 220, height: 180)
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .frame(height: 200)
         .background(
             RoundedRectangle(cornerRadius: 16)
                 .fill(cardBackground)

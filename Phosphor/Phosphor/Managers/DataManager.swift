@@ -10,6 +10,7 @@ class DataManager: ObservableObject {
     @Published var settings: UserSettings = UserSettings()
     @Published var weightHistory: [WeightEntry] = []
     @Published var exerciseHistory: [ExerciseRecord] = []
+    @Published var dailyRecommendations: DailyRecommendations?
     @Published var isLoading = false
     @Published var syncError: String?
 
@@ -17,6 +18,7 @@ class DataManager: ObservableObject {
     private let settingsKey = "userSettings"
     private let weightHistoryKey = "weightHistory"
     private let exerciseHistoryKey = "exerciseHistory"
+    private let dailyRecommendationsKey = "dailyRecommendations"
     private let cloudKitManager = CloudKitManager.shared
 
     private var syncTimer: Timer?
@@ -25,6 +27,7 @@ class DataManager: ObservableObject {
 
     private init() {
         loadLocalData()
+        refreshDailyRecommendationsIfNeeded()
         startIntensityUpdateTimer()
     }
 
@@ -63,6 +66,12 @@ class DataManager: ObservableObject {
            let decoded = try? JSONDecoder().decode([ExerciseRecord].self, from: data) {
             exerciseHistory = decoded
         }
+
+        // Load daily recommendations
+        if let data = UserDefaults.standard.data(forKey: dailyRecommendationsKey),
+           let decoded = try? JSONDecoder().decode(DailyRecommendations.self, from: data) {
+            dailyRecommendations = decoded
+        }
     }
 
     private func saveLocalData() {
@@ -81,6 +90,10 @@ class DataManager: ObservableObject {
 
         if let encoded = try? JSONEncoder().encode(exerciseHistory) {
             UserDefaults.standard.set(encoded, forKey: exerciseHistoryKey)
+        }
+
+        if let encoded = try? JSONEncoder().encode(dailyRecommendations) {
+            UserDefaults.standard.set(encoded, forKey: dailyRecommendationsKey)
         }
     }
 
@@ -374,6 +387,89 @@ class DataManager: ObservableObject {
         return exerciseHistory.filter { record in
             record.date >= startOfDay && record.date < endOfDay
         }
+    }
+
+    // MARK: - Daily Recommendations
+
+    /// Check if we need new recommendations (new day) and generate them if so
+    func refreshDailyRecommendationsIfNeeded() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        // Check if we have recommendations for today
+        if let existing = dailyRecommendations {
+            let existingDay = calendar.startOfDay(for: existing.date)
+            if existingDay == today {
+                // Already have today's recommendations
+                return
+            }
+        }
+
+        // Generate new recommendations for today
+        generateDailyRecommendations()
+    }
+
+    /// Generate 6 exercise recommendations based on muscle groups that need work
+    private func generateDailyRecommendations() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+
+        // Sort muscle groups by intensity (lowest first = needs most work)
+        let sortedMuscles = muscleGroupData.values
+            .filter { $0.isEnabled }
+            .sorted { $0.intensity() < $1.intensity() }
+            .map { $0.muscleGroup }
+
+        var recommendations: [String] = []
+        var usedExerciseIds = Set<String>()
+
+        // Get exercises for muscle groups that need work most
+        for muscleGroup in sortedMuscles {
+            let exercises = ExerciseDatabase.exercises.filter { exercise in
+                exercise.muscleGroups.contains(muscleGroup) &&
+                !usedExerciseIds.contains(exercise.id)
+            }
+
+            if let exercise = exercises.first {
+                recommendations.append(exercise.id)
+                usedExerciseIds.insert(exercise.id)
+            }
+
+            if recommendations.count >= 6 { break }
+        }
+
+        dailyRecommendations = DailyRecommendations(date: today, exerciseIds: recommendations)
+        saveLocalData()
+    }
+
+    /// Get the Exercise objects for today's remaining recommendations
+    func getTodaysRecommendedExercises() -> [Exercise] {
+        guard let recommendations = dailyRecommendations else { return [] }
+
+        return recommendations.remainingExerciseIds.compactMap { id in
+            ExerciseDatabase.exercises.first { $0.id == id }
+        }
+    }
+
+    /// Mark an exercise as completed
+    func completeRecommendedExercise(_ exerciseId: String) {
+        guard var recommendations = dailyRecommendations else { return }
+        recommendations.completedIds.insert(exerciseId)
+        dailyRecommendations = recommendations
+        saveLocalData()
+    }
+
+    /// Mark an exercise as dismissed
+    func dismissRecommendedExercise(_ exerciseId: String) {
+        guard var recommendations = dailyRecommendations else { return }
+        recommendations.dismissedIds.insert(exerciseId)
+        dailyRecommendations = recommendations
+        saveLocalData()
+    }
+
+    /// Get count of remaining recommendations
+    var remainingRecommendationsCount: Int {
+        dailyRecommendations?.remainingCount ?? 0
     }
 
     // MARK: - iCloud Sync

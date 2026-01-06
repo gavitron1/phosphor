@@ -165,13 +165,6 @@ struct TappableBodyView: View {
     // Cache loaded images for hit testing
     @State private var muscleImages: [MuscleGroup: UIImage] = [:]
 
-    // Long press tracking state
-    @State private var longPressStartTime: Date? = nil
-    @State private var longPressLocation: CGPoint? = nil
-    @State private var longPressTriggered: Bool = false
-    private let longPressDuration: TimeInterval = 0.5
-
-
     // MARK: - Neutral Gray Palette (white to black)
     private static let gray00 = Color(red: 1.0, green: 1.0, blue: 1.0)      // white
     private static let gray10 = Color(red: 0.90, green: 0.90, blue: 0.90)
@@ -290,55 +283,23 @@ struct TappableBodyView: View {
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .contentShape(Rectangle())
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let currentLocation = value.location
-
-                        // If this is a new touch, start tracking
-                        if longPressStartTime == nil {
-                            longPressStartTime = Date()
-                            longPressLocation = currentLocation
-                            longPressTriggered = false
-                        }
-
-                        // Check if user moved too far (trying to scroll) - cancel long press
-                        if let startLocation = longPressLocation {
-                            let distance = sqrt(
-                                pow(currentLocation.x - startLocation.x, 2) +
-                                pow(currentLocation.y - startLocation.y, 2)
-                            )
-                            if distance > 10 {
-                                // User is scrolling, cancel long press tracking
-                                longPressStartTime = nil
-                                longPressLocation = nil
-                                return
-                            }
-                        }
-
-                        // Check if we've held long enough and haven't triggered yet
-                        if let startTime = longPressStartTime,
-                           !longPressTriggered,
-                           Date().timeIntervalSince(startTime) >= longPressDuration {
-                            // Trigger long press immediately
-                            if let location = longPressLocation {
+            .gesture(
+                LongPressGesture(minimumDuration: 0.5)
+                    .sequenced(before: DragGesture(minimumDistance: 0))
+                    .onEnded { value in
+                        switch value {
+                        case .second(true, let drag):
+                            if let location = drag?.location {
                                 handleLongPress(at: location, viewSize: geometry.size)
                             }
-                            longPressTriggered = true
+                        default:
+                            break
                         }
-                    }
-                    .onEnded { value in
-                        // Only handle as tap if we didn't trigger a long press and didn't scroll
-                        if !longPressTriggered && longPressLocation != nil {
-                            handleTap(at: value.location, viewSize: geometry.size)
-                        }
-
-                        // Reset state
-                        longPressStartTime = nil
-                        longPressLocation = nil
-                        longPressTriggered = false
                     }
             )
+            .onTapGesture { location in
+                handleTap(at: location, viewSize: geometry.size)
+            }
             .onAppear {
                 viewSize = geometry.size
                 loadMuscleImages()
