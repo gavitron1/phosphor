@@ -181,6 +181,11 @@ struct TappableBodyView: View {
         Color(red: 0x77/255, green: 0x77/255, blue: 0x77/255).opacity(0.2)
     }
 
+    // Gray color for muscles with no intensity in normal mode
+    private var noIntensityColor: Color {
+        Color(red: 0x77/255, green: 0x77/255, blue: 0x77/255).opacity(0.1)
+    }
+
     // Blend highlight color with base color based on intensity
     private func muscleColor(for muscleGroup: MuscleGroup) -> Color {
         // In frequency edit mode: show selected muscle in highlight, others in light gray
@@ -199,7 +204,7 @@ struct TappableBodyView: View {
 
         let intensity = getIntensity(muscleGroup)
         if intensity <= 0 {
-            return baseColor
+            return noIntensityColor
         }
         // Interpolate between base color and highlight color
         // intensity of 1.0 = full highlight, intensity of 0.0 = base color

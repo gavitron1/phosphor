@@ -369,31 +369,29 @@ struct BodyView: View {
 
                     Spacer()
 
-                    // Frequency settings card (when editing and muscle selected)
-                    if isEditingFrequency, let selectedMuscle = selectedMuscleForFrequency {
-                        FrequencySettingsCard(
-                            muscleGroup: selectedMuscle,
-                            dataManager: dataManager,
-                            highlightColor: dataManager.settings.highlightColor.color
-                        )
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                        .padding(.bottom, 8)
-                    }
-
                     // Bottom row
                     if isEditingFrequency {
-                        // Edit mode: instruction capsule (fills space, not tappable)
-                        Text("Tap on a muscle group to change workout frequency")
-                            .font(.body)
-                            .fontWeight(.medium)
-                            .foregroundColor(dataManager.settings.highlightColor.color)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 14)
-                            .modifier(GlassCapsuleModifier())
-                            .padding(.horizontal, 16)
-                            .padding(.bottom, 8)
-                            .transition(.scale.combined(with: .opacity))
+                        // Edit mode: instruction text with settings card overlay
+                        ZStack(alignment: .bottom) {
+                            // Instruction text (always visible in edit mode)
+                            Text("Tap on a muscle group to change workout frequency")
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                                .padding(.bottom, 16)
+
+                            // Frequency settings card (overlays when muscle selected)
+                            if let selectedMuscle = selectedMuscleForFrequency {
+                                FrequencySettingsCard(
+                                    muscleGroup: selectedMuscle,
+                                    dataManager: dataManager,
+                                    highlightColor: dataManager.settings.highlightColor.color
+                                )
+                                .transition(.move(edge: .bottom).combined(with: .opacity))
+                            }
+                        }
+                        .padding(.bottom, 8)
                     } else {
                         // Normal mode: Calendar (left), Dynamic Capsule (center), Settings (right)
                         HStack {
