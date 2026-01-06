@@ -195,7 +195,7 @@ struct BodyView: View {
                     .ignoresSafeArea()
 
                 // Scrollable content
-                ScrollView {
+                ScrollView(.vertical, showsIndicators: true) {
                     VStack(spacing: 0) {
                         // Body avatar section (screen height)
                         ZStack {
@@ -322,7 +322,7 @@ struct BodyView: View {
                                                         },
                                                         onDismiss: {
                                                             withAnimation {
-                                                                dismissedExerciseIds.insert(exercise.id)
+                                                                _ = dismissedExerciseIds.insert(exercise.id)
                                                             }
                                                         }
                                                     )
@@ -721,35 +721,23 @@ struct GlassCircleButton: View {
 
 struct GlassCircleModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .background(.regularMaterial, in: Circle())
-                .glassEffect(.regular.interactive())
-        } else {
-            content
-                .background(
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
-                )
-        }
+        content
+            .background(
+                Circle()
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+            )
     }
 }
 
 struct GlassCapsuleModifier: ViewModifier {
     func body(content: Content) -> some View {
-        if #available(iOS 26.0, *) {
-            content
-                .background(.regularMaterial, in: Capsule())
-                .glassEffect(.regular.interactive())
-        } else {
-            content
-                .background(
-                    Capsule()
-                        .fill(.ultraThinMaterial)
-                        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
-                )
-        }
+        content
+            .background(
+                Capsule()
+                    .fill(.ultraThinMaterial)
+                    .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 2)
+            )
     }
 }
 
