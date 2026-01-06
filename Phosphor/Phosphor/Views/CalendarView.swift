@@ -14,31 +14,32 @@ struct CalendarView: View {
     }()
 
     var body: some View {
-        VStack(spacing: 16) {
-            // Month header with navigation
-            HStack {
-                Button(action: previousMonth) {
-                    Image(systemName: "chevron.left")
+        ScrollView {
+            VStack(spacing: 16) {
+                // Month header with navigation
+                HStack {
+                    Button(action: previousMonth) {
+                        Image(systemName: "chevron.left")
+                            .font(.title2)
+                            .foregroundColor(dataManager.settings.highlightColor.color)
+                    }
+
+                    Spacer()
+
+                    Text(dateFormatter.string(from: currentMonth))
                         .font(.title2)
-                        .foregroundColor(dataManager.settings.highlightColor.color)
+                        .fontWeight(.semibold)
+
+                    Spacer()
+
+                    Button(action: nextMonth) {
+                        Image(systemName: "chevron.right")
+                            .font(.title2)
+                            .foregroundColor(dataManager.settings.highlightColor.color)
+                    }
                 }
-
-                Spacer()
-
-                Text(dateFormatter.string(from: currentMonth))
-                    .font(.title2)
-                    .fontWeight(.semibold)
-
-                Spacer()
-
-                Button(action: nextMonth) {
-                    Image(systemName: "chevron.right")
-                        .font(.title2)
-                        .foregroundColor(dataManager.settings.highlightColor.color)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.top, 16)
+                .padding(.horizontal)
+                .padding(.top, 16)
 
                 // Day headers
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 7), spacing: 8) {
@@ -147,8 +148,8 @@ struct CalendarView: View {
                         .padding(.top, 8)
                     }
                 }
-
-            Spacer()
+                .padding(.bottom, 16)
+            }
         }
         .background(Color(.systemGroupedBackground))
     }

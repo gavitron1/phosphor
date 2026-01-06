@@ -1232,15 +1232,26 @@ struct RecommendedExerciseCard: View {
     let highlightColor: Color
     let onTap: () -> Void
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    // Gray colors matching the palette
+    private var cardBackground: Color {
+        colorScheme == .dark
+            ? Color(red: 0.10, green: 0.10, blue: 0.10)  // gray90
+            : Color(red: 0.80, green: 0.80, blue: 0.80)  // gray20
+    }
+
     var body: some View {
         Button(action: onTap) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 0) {
+                // Exercise name anchored to top
                 Text(exercise.name)
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundColor(.primary)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
                 Spacer()
 
@@ -1265,7 +1276,7 @@ struct RecommendedExerciseCard: View {
             .frame(width: 160, height: 140)
             .background(
                 RoundedRectangle(cornerRadius: 16)
-                    .fill(Color(.secondarySystemBackground))
+                    .fill(cardBackground)
             )
         }
         .buttonStyle(.plain)
